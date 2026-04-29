@@ -3,8 +3,7 @@ package artifacts
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
 )
 
 var RequiredEpisodeFiles = []string{
@@ -24,36 +23,28 @@ var RequiredEpisodeFiles = []string{
 	"analytics_report.json",
 }
 
-// ValidateEpisodeDirectory performs structural validation for an episode bundle.
-// Deeper schema validation is intentionally left to follow-up tasks once all
-// canonical Go validators are implemented.
+// ValidateEpisodeDirectory validates a full episode bundle using the strict
+// local validator. It returns a compact error for CLI/workflow usage.
 func ValidateEpisodeDirectory(dir string) error {
 	if dir == "" {
 		return errors.New("episode directory is required")
 	}
 
-	info, err := os.Stat(dir)
-	if err != nil {
-		return fmt.Errorf("episode directory not accessible: %w", err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("episode path is not a directory: %s", dir)
+	report := ValidateEpisodeDirectoryStrict(dir)
+	if report.Valid {
+		return nil
 	}
 
-	var missing []string
-	for _, name := range RequiredEpisodeFiles {
-		path := filepath.Join(dir, name)
-		if _, err := os.Stat(path); err != nil {
-			if os.IsNotExist(err) {
-				missing = append(missing, name)
-				continue
-			}
-			return fmt.Errorf("cannot inspect %s: %w", name, err)
+	messages := make([]string, 0, len(report.Issues))
+	for _, issue := range report.Issues {
+		location := issue.File
+		if issue.Field != "" {
+			location = fmt.Sprintf("%s:%s", location, issue.Field)
 		}
+		if location == "" {
+			location = "episode"
+		}
+		messages = append(messages, fmt.Sprintf("%s: %s", location, issue.Message))
 	}
-
-	if len(missing) > 0 {
-		return fmt.Errorf("episode is missing required artifacts: %v", missing)
-	}
-	return nil
+	return fmt.Errorf("episode validation failed: %s", strings.Join(messages, "; "))
 }
