@@ -9,25 +9,28 @@ import (
 	"github.com/AnimusHQ/news/internal/artifacts"
 	"github.com/AnimusHQ/news/internal/council"
 	"github.com/AnimusHQ/news/internal/publishing"
+	"github.com/AnimusHQ/news/internal/research"
 	"github.com/AnimusHQ/news/internal/verification"
 )
 
 // DryRunReport is a local, safe summary of the current pipeline readiness.
 type DryRunReport struct {
-	EpisodeDir           string
-	ArtifactsValid       bool
-	ValidationIssues     []artifacts.ValidationIssue
-	CouncilConsensus     council.Consensus
-	CouncilSelected      []string
-	CouncilDissent       int
-	CouncilBlockers      int
-	VerificationDecision string
-	VerificationBlockers int
-	PublishVisibility    artifacts.PublishVisibility
-	PublishDraftID       string
-	WorkflowReached      []string
-	Warnings             []string
-	Blockers             []string
+	EpisodeDir             string
+	ArtifactsValid         bool
+	ValidationIssues       []artifacts.ValidationIssue
+	ResearchValid          bool
+	ResearchBlockers       int
+	CouncilConsensus       council.Consensus
+	CouncilSelected        []string
+	CouncilDissent         int
+	CouncilBlockers        int
+	VerificationDecision   string
+	VerificationBlockers   int
+	PublishVisibility      artifacts.PublishVisibility
+	PublishDraftID         string
+	WorkflowReached        []string
+	Warnings               []string
+	Blockers               []string
 }
 
 func (r DryRunReport) String() string {
@@ -35,6 +38,8 @@ func (r DryRunReport) String() string {
 	fmt.Fprintf(&b, "Animus News dry run\n")
 	fmt.Fprintf(&b, "episode: %s\n", r.EpisodeDir)
 	fmt.Fprintf(&b, "artifacts_valid: %t\n", r.ArtifactsValid)
+	fmt.Fprintf(&b, "research_valid: %t\n", r.ResearchValid)
+	fmt.Fprintf(&b, "research_blocker_count: %d\n", r.ResearchBlockers)
 	if r.CouncilConsensus != "" {
 		fmt.Fprintf(&b, "council_consensus: %s\n", r.CouncilConsensus)
 		fmt.Fprintf(&b, "council_selected: %s\n", strings.Join(r.CouncilSelected, ", "))
@@ -81,8 +86,9 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		EpisodeDir: episodeDir,
 		WorkflowReached: []string{
 			"validate_artifacts",
-			"mock_research_ready",
+			"load_research_pack",
 			"load_claims",
+			"audit_research_authority",
 			"local_multimodel_council",
 			"deterministic_claim_verification",
 			"generate_publish_pack",
@@ -105,10 +111,35 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 	}
 	report.ArtifactsValid = true
 
+	researchFile, err := artifacts.LoadResearchPackFile(filepath.Join(episodeDir, "research_pack.json"))
+	if err != nil {
+		report.Blockers = append(report.Blockers, fmt.Sprintf("research pack loading failed: %v", err))
+		return report, err
+	}
+
 	claimsFile, err := artifacts.LoadClaimsFile(filepath.Join(episodeDir, "claims.json"))
 	if err != nil {
 		report.Blockers = append(report.Blockers, fmt.Sprintf("claim loading failed: %v", err))
 		return report, err
+	}
+
+	researchAudit, err := research.AuditPack(research.Pack{
+		CoreQuestion:             researchFile.CoreQuestion,
+		Sources:                  researchFile.Sources,
+		LearningObjectives:       researchFile.LearningObjectives,
+		ForbiddenSimplifications: researchFile.ForbiddenSimplifications,
+		VisualOpportunities:      researchFile.VisualOpportunities,
+	}, claimsFile.Claims)
+	if err != nil {
+		report.Blockers = append(report.Blockers, fmt.Sprintf("research audit failed: %v", err))
+		return report, err
+	}
+	report.ResearchValid = researchAudit.Valid
+	report.ResearchBlockers = len(researchAudit.Blockers)
+	report.Warnings = append(report.Warnings, researchAudit.Warnings...)
+	if !researchAudit.Valid {
+		report.Blockers = append(report.Blockers, researchAudit.Blockers...)
+		return report, fmt.Errorf("research audit failed")
 	}
 
 	councilResult, err := RunLocalMockCouncil(context.Background(), DefaultModelRegistryPath)
@@ -143,6 +174,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		EpisodeID:     "episode-0001",
 		Title:         "What Happens After git push?",
 		Summary:       "A source-grounded dry-run publish pack for the pilot episode.",
+		Sources:       researchFile.Sources,
 		Visibility:    artifacts.PublishVisibilityPrivate,
 		HumanApproved: false,
 		CTA:           "Join the Animus open-source community and follow the source-backed production path.",
