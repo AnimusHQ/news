@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/AnimusHQ/news/internal/artifacts"
 	"github.com/AnimusHQ/news/internal/pipeline"
+	"github.com/AnimusHQ/news/internal/worker"
 )
 
 func main() {
@@ -41,6 +43,8 @@ func run(args []string) error {
 		}
 		fmt.Println(report.String())
 		return nil
+	case "worker":
+		return worker.Run(context.Background(), worker.Config{})
 	case "help", "-h", "--help":
 		printUsage()
 		return nil
@@ -55,6 +59,7 @@ func printUsage() {
 Usage:
   animus-news validate-episode <episode-dir>
   animus-news dry-run <episode-dir>
+  animus-news worker
 
-This CLI is intentionally safe-by-default: no model provider calls, no uploads, and no public publishing.`)
+This CLI is intentionally safe-by-default: no direct public publishing. The worker requires a local or configured Temporal service.`)
 }
