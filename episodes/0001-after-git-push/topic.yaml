@@ -1,0 +1,22 @@
+schema_version: "1.0"
+episode_id: "episode-0001"
+artifact_id: "topic-episode-0001-v1"
+created_at: "2026-04-29T00:00:00Z"
+created_by: "human:animus"
+status: "draft"
+title_working: "What happens after git push?"
+format: "how_it_works"
+audience:
+  primary: "beginner/intermediate engineers"
+  secondary: "open-source contributors"
+scores:
+  educational_value: 9
+  evergreen_value: 9
+  community_fit: 8
+  visual_potential: 10
+  production_cost: 5
+  factual_risk: 4
+  funnel_value: 8
+operator_decision:
+  decision: "approved_for_pilot"
+  notes: "Pilot topic for validating Animus News pipeline."
