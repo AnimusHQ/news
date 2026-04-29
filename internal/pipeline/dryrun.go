@@ -8,6 +8,7 @@ import (
 
 	"github.com/AnimusHQ/news/internal/artifacts"
 	"github.com/AnimusHQ/news/internal/council"
+	"github.com/AnimusHQ/news/internal/publishing"
 	"github.com/AnimusHQ/news/internal/verification"
 )
 
@@ -22,6 +23,8 @@ type DryRunReport struct {
 	CouncilBlockers      int
 	VerificationDecision string
 	VerificationBlockers int
+	PublishVisibility    artifacts.PublishVisibility
+	PublishDraftID       string
 	WorkflowReached      []string
 	Warnings             []string
 	Blockers             []string
@@ -41,6 +44,10 @@ func (r DryRunReport) String() string {
 	if r.VerificationDecision != "" {
 		fmt.Fprintf(&b, "verification_decision: %s\n", r.VerificationDecision)
 		fmt.Fprintf(&b, "verification_blocker_count: %d\n", r.VerificationBlockers)
+	}
+	if r.PublishDraftID != "" {
+		fmt.Fprintf(&b, "publish_visibility: %s\n", r.PublishVisibility)
+		fmt.Fprintf(&b, "publish_draft_id: %s\n", r.PublishDraftID)
 	}
 	fmt.Fprintf(&b, "workflow_reached: %s\n", strings.Join(r.WorkflowReached, " -> "))
 	if len(r.ValidationIssues) > 0 {
@@ -78,12 +85,14 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 			"load_claims",
 			"local_multimodel_council",
 			"deterministic_claim_verification",
+			"generate_publish_pack",
+			"dry_run_publish_private_draft",
 			"human_qa_required",
-			"dry_run_publish_blocked_by_design",
+			"public_publish_blocked_by_design",
 		},
 		Warnings: []string{
 			"no external model providers are called; council uses deterministic local mock providers",
-			"no publishing adapter is executed; public publishing is unavailable by design",
+			"publishing uses local dry-run adapter only; no network call or upload is performed",
 			"pilot artifacts are draft/dry-run artifacts and must not be treated as public-release approval",
 		},
 	}
@@ -129,6 +138,27 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 	if verificationReport.Decision != "approved" {
 		report.Warnings = append(report.Warnings, "claim verification requires revision before production publication")
 	}
+
+	pack, err := publishing.GeneratePack(publishing.PackInput{
+		EpisodeID:     "episode-0001",
+		Title:         "What Happens After git push?",
+		Summary:       "A source-grounded dry-run publish pack for the pilot episode.",
+		Visibility:    artifacts.PublishVisibilityPrivate,
+		HumanApproved: false,
+		CTA:           "Join the Animus open-source community and follow the source-backed production path.",
+	})
+	if err != nil {
+		report.Blockers = append(report.Blockers, fmt.Sprintf("publish pack generation failed: %v", err))
+		return report, err
+	}
+
+	publishResult, err := publishing.DryRunAdapter{}.UploadPrivateDraft(context.Background(), pack)
+	if err != nil {
+		report.Blockers = append(report.Blockers, fmt.Sprintf("dry-run publishing failed: %v", err))
+		return report, err
+	}
+	report.PublishVisibility = publishResult.Visibility
+	report.PublishDraftID = publishResult.DraftID
 
 	return report, nil
 }
