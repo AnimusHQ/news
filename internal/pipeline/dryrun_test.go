@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/AnimusHQ/news/internal/artifacts"
+	"github.com/AnimusHQ/news/internal/council"
 )
 
 func TestDryRunPassesForCompleteBundle(t *testing.T) {
@@ -22,6 +23,15 @@ func TestDryRunPassesForCompleteBundle(t *testing.T) {
 	}
 	if len(report.Blockers) != 0 {
 		t.Fatalf("expected no blockers, got %v", report.Blockers)
+	}
+	if report.CouncilConsensus != council.ConsensusRevisionRequired {
+		t.Fatalf("expected revision-required council consensus, got %s", report.CouncilConsensus)
+	}
+	if len(report.CouncilSelected) != 3 {
+		t.Fatalf("expected 3 selected council models, got %d", len(report.CouncilSelected))
+	}
+	if report.CouncilDissent != 1 {
+		t.Fatalf("expected one dissenting revision review, got %d", report.CouncilDissent)
 	}
 }
 
