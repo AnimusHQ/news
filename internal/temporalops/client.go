@@ -55,11 +55,17 @@ func StartEpisode(ctx context.Context, cfg Config, episodeID string, episodeDir 
 
 // SignalHumanQA sends the human QA decision signal.
 func SignalHumanQA(ctx context.Context, cfg Config, workflowID string, decision string) error {
+	if !validHumanQADecision(decision) {
+		return fmt.Errorf("invalid human QA decision %q", decision)
+	}
 	return signal(ctx, cfg, workflowID, workflows.HumanQADecisionSignalName, decision)
 }
 
 // SignalRelease sends the release approval decision signal.
 func SignalRelease(ctx context.Context, cfg Config, workflowID string, decision string) error {
+	if decision != "approve" && decision != "block" {
+		return fmt.Errorf("invalid release decision %q", decision)
+	}
 	return signal(ctx, cfg, workflowID, workflows.ReleaseApprovalSignalName, decision)
 }
 
@@ -98,4 +104,13 @@ func QueryEpisodeState(ctx context.Context, cfg Config, workflowID string) (work
 		return workflows.EpisodeWorkflowState{}, err
 	}
 	return state, nil
+}
+
+func validHumanQADecision(decision string) bool {
+	switch decision {
+	case "approve", "approve_with_minor_edits", "request_revision", "block":
+		return true
+	default:
+		return false
+	}
 }
