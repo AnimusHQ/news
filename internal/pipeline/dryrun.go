@@ -11,6 +11,7 @@ import (
 type DryRunReport struct {
 	EpisodeDir      string
 	ArtifactsValid  bool
+	ValidationIssues []artifacts.ValidationIssue
 	WorkflowReached []string
 	Warnings        []string
 	Blockers        []string
@@ -22,6 +23,16 @@ func (r DryRunReport) String() string {
 	fmt.Fprintf(&b, "episode: %s\n", r.EpisodeDir)
 	fmt.Fprintf(&b, "artifacts_valid: %t\n", r.ArtifactsValid)
 	fmt.Fprintf(&b, "workflow_reached: %s\n", strings.Join(r.WorkflowReached, " -> "))
+	if len(r.ValidationIssues) > 0 {
+		fmt.Fprintf(&b, "validation_issues:\n")
+		for _, issue := range r.ValidationIssues {
+			location := issue.File
+			if issue.Field != "" {
+				location = location + ":" + issue.Field
+			}
+			fmt.Fprintf(&b, "  - %s: %s\n", location, issue.Message)
+		}
+	}
 	if len(r.Warnings) > 0 {
 		fmt.Fprintf(&b, "warnings:\n")
 		for _, warning := range r.Warnings {
@@ -50,15 +61,17 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 			"dry_run_publish_blocked_by_design",
 		},
 		Warnings: []string{
-			"dry run currently validates structural artifact presence only; deep schema validation is a follow-up task",
 			"no model providers are called; multimodel council is represented as a safe placeholder",
 			"no publishing adapter is executed; public publishing is unavailable by design",
+			"pilot artifacts are draft/dry-run artifacts and must not be treated as public-release approval",
 		},
 	}
 
-	if err := artifacts.ValidateEpisodeDirectory(episodeDir); err != nil {
-		report.Blockers = append(report.Blockers, err.Error())
-		return report, err
+	validation := artifacts.ValidateEpisodeDirectoryStrict(episodeDir)
+	report.ValidationIssues = validation.Issues
+	if !validation.Valid {
+		report.Blockers = append(report.Blockers, "artifact validation failed")
+		return report, artifacts.ValidateEpisodeDirectory(episodeDir)
 	}
 
 	report.ArtifactsValid = true
