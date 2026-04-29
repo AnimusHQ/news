@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "episode_id": "episode-0001",
+  "artifact_id": "analytics-report-episode-0001-v1",
+  "created_at": "2026-04-29T00:00:00Z",
+  "created_by": "system:placeholder",
+  "status": "draft",
+  "window": "dry_run",
+  "metrics": {
+    "ctr": 0,
+    "average_view_duration_seconds": 0,
+    "first_30s_retention": 0,
+    "subscriber_delta": 0,
+    "community_clicks": 0
+  },
+  "insights": ["No public analytics exist for dry-run pilot."],
+  "recommended_actions": ["Complete real verification and production QA before any public release."]
+}
