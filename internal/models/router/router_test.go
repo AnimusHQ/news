@@ -79,6 +79,41 @@ func TestRouteRejectsDisabledModel(t *testing.T) {
 	}
 }
 
+func TestRouteRejectsDegradedModelByDefault(t *testing.T) {
+	degraded := model("degraded", models.PrivacyTierPublic, 0.9)
+	degraded.Status = models.ModelStatusDegraded
+	r := New([]models.ModelRecord{degraded})
+
+	_, err := r.Route(models.TaskRequest{
+		Capability:  models.CapabilityTechnicalVerification,
+		RiskLevel:   models.RiskLow,
+		Modality:    models.ModalityText,
+		PrivacyTier: models.PrivacyTierPublic,
+	})
+	if err == nil {
+		t.Fatal("expected degraded-only registry to fail by default")
+	}
+}
+
+func TestRouteAllowsDegradedModelWhenFallbackPolicyAllows(t *testing.T) {
+	degraded := model("degraded", models.PrivacyTierPublic, 0.9)
+	degraded.Status = models.ModelStatusDegraded
+	r := NewWithOptions([]models.ModelRecord{degraded}, Options{AllowDegraded: true})
+
+	decision, err := r.Route(models.TaskRequest{
+		Capability:  models.CapabilityTechnicalVerification,
+		RiskLevel:   models.RiskLow,
+		Modality:    models.ModalityText,
+		PrivacyTier: models.PrivacyTierPublic,
+	})
+	if err != nil {
+		t.Fatalf("expected degraded fallback to be selectable: %v", err)
+	}
+	if len(decision.Selected) != 1 || decision.Selected[0].ID != "degraded" {
+		t.Fatalf("expected degraded model selected, got %+v", decision.Selected)
+	}
+}
+
 func TestRouteBlocksPrivacyMismatch(t *testing.T) {
 	r := New([]models.ModelRecord{
 		model("public-model", models.PrivacyTierPublic, 0.9),
