@@ -1,0 +1,44 @@
+models:
+  - id: mock-technical-reviewer-v1
+    provider: local-mock
+    version: v1
+    status: active
+    privacy_tier: local_only
+    modalities: [text]
+    capabilities: [technical_verification]
+    cost_score: 1.0
+    latency_score: 1.0
+    quality_score: 0.90
+
+  - id: mock-editorial-reviewer-v1
+    provider: local-mock
+    version: v1
+    status: active
+    privacy_tier: local_only
+    modalities: [text]
+    capabilities: [editorial_review]
+    cost_score: 1.0
+    latency_score: 1.0
+    quality_score: 0.85
+
+  - id: mock-safety-reviewer-v1
+    provider: local-mock
+    version: v1
+    status: active
+    privacy_tier: local_only
+    modalities: [text]
+    capabilities: [safety_review]
+    cost_score: 1.0
+    latency_score: 1.0
+    quality_score: 0.88
+
+  - id: disabled-provider-example
+    provider: disabled-mock
+    version: v1
+    status: disabled
+    privacy_tier: public
+    modalities: [text]
+    capabilities: [technical_verification]
+    cost_score: 0.1
+    latency_score: 0.1
+    quality_score: 0.1
