@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "episode_id": "episode-0001",
+  "artifact_id": "human-qa-episode-0001-v1",
+  "created_at": "2026-04-29T00:00:00Z",
+  "created_by": "human:placeholder",
+  "status": "draft",
+  "reviewer": "operator-placeholder",
+  "decision": "request_revision",
+  "notes": "Pilot artifact bundle is approved for dry-run validation only. Real production publication requires verified source locators and final QA.",
+  "required_changes": ["Replace placeholder evidence locators with verified source ranges.", "Run real multimodel verification before production release."]
+}
