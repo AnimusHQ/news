@@ -7,10 +7,18 @@ The repository is now prepared for Go + Temporal production implementation. It i
 - architecture documentation;
 - Go module baseline;
 - CLI skeleton;
-- structural episode validation;
-- safe dry-run skeleton;
+- strict local episode validation;
+- safe dry-run pipeline;
+- model registry loader;
+- model router;
+- deterministic mock model providers;
+- multimodel council runner;
+- claim verification engine;
 - Temporal workflow skeleton;
 - Temporal activity stubs;
+- Temporal workflow tests;
+- Temporal worker command;
+- Temporal operator CLI commands;
 - pilot episode artifact bundle;
 - CI workflow;
 - Codex task packs and agent instructions.
@@ -62,9 +70,11 @@ Complete when:
 - `go test ./...` passes;
 - `go run ./cmd/animus-news validate-episode episodes/0001-after-git-push` passes;
 - `go run ./cmd/animus-news dry-run episodes/0001-after-git-push` passes;
-- no network or secrets required.
+- no network or secrets required;
+- dry-run executes deterministic local model council;
+- dry-run executes deterministic claim verification.
 
-Status: pending verification in CI/Codex environment.
+Status: implemented, pending verification in CI/Codex environment.
 
 ## Level 3 — Temporal Local Ready
 
@@ -75,9 +85,11 @@ Complete when:
 - workflow waits for human QA signal;
 - workflow waits for release approval signal;
 - invalid transitions block;
-- replay/determinism constraints are documented and tested.
+- replay/determinism constraints are documented and tested;
+- local worker command exists;
+- operator commands exist for start, signal, and query.
 
-Status: scaffold exists; tests and worker runtime pending.
+Status: implemented as a local scaffold, pending verification in CI/Codex environment and local Temporal service run.
 
 ## Level 4 — Provider Sandbox Ready
 
@@ -91,7 +103,7 @@ Complete when:
 - provider health and fallback policy exists;
 - cost tracking exists.
 
-Status: planned in task packs.
+Status: partially implemented. Provider health/fallback and cost tracking remain pending.
 
 ## Level 5 — Private Production Ready
 
@@ -141,16 +153,16 @@ The system must not publicly launch if any of these are true:
 
 ## Immediate next implementation sequence
 
-1. Run Codex on Go-corrected ACC-000/ACC-001 cleanup if CI exposes issues.
-2. Implement deep Go artifact validators.
-3. Implement model registry and mock providers.
-4. Implement model router.
-5. Implement multimodel council.
-6. Implement claim extraction and verification.
-7. Implement Temporal workflow tests.
-8. Implement local worker command.
-9. Implement dry-run publish pack.
-10. Implement real provider sandbox behind adapters.
+1. Run CI/Codex checks and fix compile/test issues.
+2. Implement provider health and fallback policy.
+3. Implement cost tracking.
+4. Implement security scanning and redaction utilities.
+5. Implement publish pack generator.
+6. Implement dry-run publishing adapter.
+7. Implement source registry and research pack builder.
+8. Implement real provider sandbox behind adapters.
+9. Implement persistence and artifact store.
+10. Implement operator UI/API.
 
 ## Required local verification commands
 
@@ -161,6 +173,46 @@ go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
 go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 ```
 
+## Local Temporal operator loop
+
+Run a local Temporal service first. Then, in one terminal, start the worker:
+
+```bash
+go run ./cmd/animus-news worker
+```
+
+In another terminal, start the pilot workflow:
+
+```bash
+go run ./cmd/animus-news start-workflow episode-0001 episodes/0001-after-git-push
+```
+
+Query workflow state:
+
+```bash
+go run ./cmd/animus-news query-state animus-news-episode-0001
+```
+
+Approve human QA for the dry run:
+
+```bash
+go run ./cmd/animus-news signal-human-qa animus-news-episode-0001 approve
+```
+
+Approve release for the dry run:
+
+```bash
+go run ./cmd/animus-news signal-release animus-news-episode-0001 approve
+```
+
+Query state again to confirm `dry_run_complete`:
+
+```bash
+go run ./cmd/animus-news query-state animus-news-episode-0001
+```
+
+This is still a dry-run path. It does not upload publicly and does not call real model providers.
+
 ## Current safety posture
 
 Safe by default:
@@ -170,4 +222,5 @@ Safe by default:
 - no public publishing;
 - pilot episode is draft/dry-run only;
 - placeholder claims are not represented as production-approved;
-- release approval is modeled as a workflow signal.
+- release approval is modeled as a workflow signal;
+- invalid signal decisions are rejected locally before Temporal signaling.
