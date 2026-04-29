@@ -37,6 +37,9 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Scan repository for secrets
+        run: go run ./cmd/animus-news scan-secrets .
+
       - name: Validate pilot episode
         run: go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
 
