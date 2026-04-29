@@ -6,6 +6,7 @@ import (
 
 	"github.com/AnimusHQ/news/internal/activities"
 	"github.com/AnimusHQ/news/internal/workflows"
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
@@ -19,8 +20,12 @@ type Config struct {
 	TaskQueue       string
 }
 
-// Run starts a Temporal worker and blocks until context cancellation or worker error.
+// Run starts a Temporal worker and blocks until the process is interrupted or
+// the worker returns an error. The context is reserved for future graceful
+// shutdown integration.
 func Run(ctx context.Context, cfg Config) error {
+	_ = ctx
+
 	address := cfg.TemporalAddress
 	if address == "" {
 		address = client.DefaultHostPort
@@ -45,10 +50,10 @@ func Run(ctx context.Context, cfg Config) error {
 
 	w := worker.New(c, taskQueue, worker.Options{})
 	w.RegisterWorkflow(workflows.EpisodeLifecycleWorkflow)
-	w.RegisterActivityWithOptions(activities.ValidateEpisodeActivity, worker.RegisterActivityOptions{Name: "ValidateEpisodeActivity"})
-	w.RegisterActivityWithOptions(activities.MockCouncilActivity, worker.RegisterActivityOptions{Name: "MockCouncilActivity"})
-	w.RegisterActivityWithOptions(activities.ProductionQAActivity, worker.RegisterActivityOptions{Name: "ProductionQAActivity"})
-	w.RegisterActivityWithOptions(activities.DryRunPublishActivity, worker.RegisterActivityOptions{Name: "DryRunPublishActivity"})
+	w.RegisterActivityWithOptions(activities.ValidateEpisodeActivity, activity.RegisterOptions{Name: "ValidateEpisodeActivity"})
+	w.RegisterActivityWithOptions(activities.MockCouncilActivity, activity.RegisterOptions{Name: "MockCouncilActivity"})
+	w.RegisterActivityWithOptions(activities.ProductionQAActivity, activity.RegisterOptions{Name: "ProductionQAActivity"})
+	w.RegisterActivityWithOptions(activities.DryRunPublishActivity, activity.RegisterOptions{Name: "DryRunPublishActivity"})
 
 	return w.Run(worker.InterruptCh())
 }
