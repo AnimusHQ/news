@@ -3,6 +3,8 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/AnimusHQ/news/internal/council"
 	"github.com/AnimusHQ/news/internal/models"
@@ -28,6 +30,7 @@ func RunLocalMockCouncil(ctx context.Context, registryPath string) (CouncilDryRu
 	if registryPath == "" {
 		registryPath = DefaultModelRegistryPath
 	}
+	registryPath = resolveRegistryPath(registryPath)
 
 	records, err := registry.LoadFile(registryPath)
 	if err != nil {
@@ -88,6 +91,31 @@ func RunLocalMockCouncil(ctx context.Context, registryPath string) (CouncilDryRu
 	}
 
 	return CouncilDryRunResult{Report: report, Selected: selected, RegistryPath: registryPath}, nil
+}
+
+func resolveRegistryPath(registryPath string) string {
+	if filepath.IsAbs(registryPath) {
+		return registryPath
+	}
+	if _, err := os.Stat(registryPath); err == nil {
+		return registryPath
+	}
+
+	current, err := os.Getwd()
+	if err != nil {
+		return registryPath
+	}
+	for {
+		candidate := filepath.Join(current, registryPath)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return registryPath
+		}
+		current = parent
+	}
 }
 
 func mockProviderForTask(model models.ModelRecord, task models.TaskRequest) adapters.Provider {

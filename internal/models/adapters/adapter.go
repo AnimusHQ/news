@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AnimusHQ/news/internal/council"
 	"github.com/AnimusHQ/news/internal/models"
 )
 
@@ -21,7 +20,7 @@ type Request struct {
 type Response struct {
 	ModelID    string
 	Provider   string
-	Review     council.ModelReview
+	Review     models.ModelReview
 	RawSummary string
 }
 

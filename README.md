@@ -57,6 +57,84 @@ Start here:
 - [Contributing](CONTRIBUTING.md) — how to contribute to the project.
 - [Security Policy](SECURITY.md) — how to report security issues.
 
+## Quick start
+
+Animus News is currently a Go CLI and Temporal workflow scaffold. There is no web server to open yet. The local "start" path runs a safe, no-network dry run of the pilot episode.
+
+Prerequisites:
+
+- Go version from `go.mod`.
+- Optional: GNU Make for shortcut commands.
+- Optional: a local Temporal service only if you want to test `worker` and workflow signaling commands.
+
+Install dependencies:
+
+```bash
+go mod download
+```
+
+Run the local release-readiness smoke check:
+
+```bash
+make smoke
+```
+
+On Windows without Make:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+```
+
+Or run the equivalent commands manually:
+
+```bash
+go test ./...
+go vet ./...
+go run ./cmd/animus-news scan-secrets .
+go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
+go run ./cmd/animus-news validate --json episodes/0001-after-git-push/research_pack.json
+go run ./cmd/animus-news dry-run episodes/0001-after-git-push
+```
+
+Start the local MVP dry run:
+
+```bash
+make start
+```
+
+On Windows without Make:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start.ps1
+```
+
+Expected result: the dry run validates artifacts, audits research/source authority, routes local mock council reviewers, verifies claims deterministically, generates a safe publish pack, and creates a private dry-run draft record. It must not call real providers or upload publicly.
+
+The pilot intentionally reports `revision_required` / `request_revision` because its evidence locators are placeholders. That is a launch blocker, not a startup failure.
+
+See [Taskpack Release Audit](docs/TASKPACK_RELEASE_AUDIT.md) for current taskpack status and launch blockers.
+
+## CLI commands
+
+```bash
+go run ./cmd/animus-news help
+go run ./cmd/animus-news validate <path>
+go run ./cmd/animus-news validate --json <path>
+go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
+go run ./cmd/animus-news dry-run episodes/0001-after-git-push
+go run ./cmd/animus-news scan-secrets .
+```
+
+Temporal workflow commands require a running Temporal service:
+
+```bash
+go run ./cmd/animus-news worker
+go run ./cmd/animus-news start-workflow episode-0001 episodes/0001-after-git-push
+go run ./cmd/animus-news query-state animus-news-episode-0001
+go run ./cmd/animus-news signal-human-qa animus-news-episode-0001 approve
+go run ./cmd/animus-news signal-release animus-news-episode-0001 approve
+```
+
 ## Non-goals
 
 Animus News is explicitly **not**:

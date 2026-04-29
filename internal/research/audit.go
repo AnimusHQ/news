@@ -9,11 +9,11 @@ import (
 
 // Pack is the subset of research_pack.json needed for deterministic audits.
 type Pack struct {
-	CoreQuestion              string             `json:"core_question" yaml:"core_question"`
-	Sources                   []artifacts.Source `json:"sources" yaml:"sources"`
-	LearningObjectives        []string           `json:"learning_objectives" yaml:"learning_objectives"`
-	ForbiddenSimplifications  []string           `json:"forbidden_simplifications" yaml:"forbidden_simplifications"`
-	VisualOpportunities       []string           `json:"visual_opportunities" yaml:"visual_opportunities"`
+	CoreQuestion             string             `json:"core_question" yaml:"core_question"`
+	Sources                  []artifacts.Source `json:"sources" yaml:"sources"`
+	LearningObjectives       []string           `json:"learning_objectives" yaml:"learning_objectives"`
+	ForbiddenSimplifications []string           `json:"forbidden_simplifications" yaml:"forbidden_simplifications"`
+	VisualOpportunities      []string           `json:"visual_opportunities" yaml:"visual_opportunities"`
 }
 
 // AuditResult summarizes deterministic research quality checks.

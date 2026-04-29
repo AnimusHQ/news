@@ -10,10 +10,10 @@ import (
 
 // Finding is a deterministic local security scan finding.
 type Finding struct {
-	Path       string `json:"path"`
-	Pattern    string `json:"pattern"`
-	Line       int    `json:"line"`
-	HighRisk   bool   `json:"high_risk"`
+	Path     string `json:"path"`
+	Pattern  string `json:"pattern"`
+	Line     int    `json:"line"`
+	HighRisk bool   `json:"high_risk"`
 }
 
 // ScanSummary summarizes a file tree scan.

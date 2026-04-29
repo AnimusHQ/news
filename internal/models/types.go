@@ -15,14 +15,14 @@ const (
 type Capability string
 
 const (
-	CapabilityResearchSynthesis    Capability = "research_synthesis"
+	CapabilityResearchSynthesis     Capability = "research_synthesis"
 	CapabilityTechnicalVerification Capability = "technical_verification"
-	CapabilityScriptWriting        Capability = "script_writing"
-	CapabilityEditorialReview      Capability = "editorial_review"
-	CapabilityStoryboardPlanning   Capability = "storyboard_planning"
-	CapabilityVisualReasoning      Capability = "visual_reasoning"
-	CapabilitySafetyReview         Capability = "safety_review"
-	CapabilityAnalytics            Capability = "analytics_interpretation"
+	CapabilityScriptWriting         Capability = "script_writing"
+	CapabilityEditorialReview       Capability = "editorial_review"
+	CapabilityStoryboardPlanning    Capability = "storyboard_planning"
+	CapabilityVisualReasoning       Capability = "visual_reasoning"
+	CapabilitySafetyReview          Capability = "safety_review"
+	CapabilityAnalytics             Capability = "analytics_interpretation"
 )
 
 // PrivacyTier controls which data classes a model may receive.
@@ -54,6 +54,26 @@ const (
 	RiskCritical RiskLevel = "critical"
 )
 
+// Verdict is a normalized model review outcome.
+type Verdict string
+
+const (
+	VerdictApprove                Verdict = "approve"
+	VerdictApproveWithSuggestions Verdict = "approve_with_suggestions"
+	VerdictRequestRevision        Verdict = "request_revision"
+	VerdictBlock                  Verdict = "block"
+)
+
+// ModelReview is one reviewer model's normalized output.
+type ModelReview struct {
+	ModelID    string  `json:"model_id"`
+	Provider   string  `json:"provider"`
+	Task       string  `json:"task"`
+	Verdict    Verdict `json:"verdict"`
+	Confidence float64 `json:"confidence"`
+	Notes      string  `json:"notes"`
+}
+
 // ModelRecord is a provider-agnostic registry record.
 type ModelRecord struct {
 	ID           string       `json:"id" yaml:"id"`
@@ -70,14 +90,14 @@ type ModelRecord struct {
 
 // TaskRequest is the normalized input to the model router.
 type TaskRequest struct {
-	TaskID       string
-	Capability   Capability
-	RiskLevel    RiskLevel
-	Modality     Modality
-	PrivacyTier  PrivacyTier
-	EpisodeID    string
-	ArtifactID   string
-	Description  string
+	TaskID      string
+	Capability  Capability
+	RiskLevel   RiskLevel
+	Modality    Modality
+	PrivacyTier PrivacyTier
+	EpisodeID   string
+	ArtifactID  string
+	Description string
 }
 
 // RoutingDecision explains the router's choice.

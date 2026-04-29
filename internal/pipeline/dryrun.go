@@ -15,22 +15,22 @@ import (
 
 // DryRunReport is a local, safe summary of the current pipeline readiness.
 type DryRunReport struct {
-	EpisodeDir             string
-	ArtifactsValid         bool
-	ValidationIssues       []artifacts.ValidationIssue
-	ResearchValid          bool
-	ResearchBlockers       int
-	CouncilConsensus       council.Consensus
-	CouncilSelected        []string
-	CouncilDissent         int
-	CouncilBlockers        int
-	VerificationDecision   string
-	VerificationBlockers   int
-	PublishVisibility      artifacts.PublishVisibility
-	PublishDraftID         string
-	WorkflowReached        []string
-	Warnings               []string
-	Blockers               []string
+	EpisodeDir           string
+	ArtifactsValid       bool
+	ValidationIssues     []artifacts.ValidationIssue
+	ResearchValid        bool
+	ResearchBlockers     int
+	CouncilConsensus     council.Consensus
+	CouncilSelected      []string
+	CouncilDissent       int
+	CouncilBlockers      int
+	VerificationDecision string
+	VerificationBlockers int
+	PublishVisibility    artifacts.PublishVisibility
+	PublishDraftID       string
+	WorkflowReached      []string
+	Warnings             []string
+	Blockers             []string
 }
 
 func (r DryRunReport) String() string {

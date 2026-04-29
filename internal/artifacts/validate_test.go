@@ -64,6 +64,49 @@ func TestValidateEpisodeDirectoryBlocksPublicWithoutHumanReleaseApproval(t *test
 	}
 }
 
+func TestValidatePathPassesForSingleArtifact(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "research_pack.json")
+	writeArtifact(t, path, `{
+  "schema_version": "1.0",
+  "episode_id": "episode-test",
+  "artifact_id": "research-test",
+  "created_at": "2026-04-29T00:00:00Z",
+  "created_by": "test",
+  "status": "draft",
+  "core_question": "How does validation work?",
+  "learning_objectives": ["Explain validation."],
+  "sources": [
+    {
+      "source_id": "source-test",
+      "title": "Test source",
+      "uri": "https://example.com/source",
+      "type": "official_docs",
+      "trust_level": "primary"
+    }
+  ]
+}`)
+
+	report := ValidatePath(path)
+	if !report.Valid {
+		t.Fatalf("expected artifact to validate: %+v", report.Issues)
+	}
+}
+
+func TestValidatePathFailsForUnknownArtifact(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "unknown.json")
+	writeArtifact(t, path, `{"schema_version":"1.0"}`)
+
+	report := ValidatePath(path)
+	if report.Valid {
+		t.Fatal("expected unknown artifact to fail")
+	}
+	if len(report.Issues) == 0 || !strings.Contains(report.Issues[0].Message, "unknown canonical artifact") {
+		t.Fatalf("expected unknown artifact issue, got %+v", report.Issues)
+	}
+}
+
 func writeCompleteEpisodeFixture(t *testing.T, dir string) {
 	t.Helper()
 	for _, name := range RequiredEpisodeFiles {

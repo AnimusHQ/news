@@ -38,12 +38,12 @@ const (
 type ClaimStatus string
 
 const (
-	ClaimStatusSupported         ClaimStatus = "supported"
+	ClaimStatusSupported          ClaimStatus = "supported"
 	ClaimStatusPartiallySupported ClaimStatus = "partially_supported"
-	ClaimStatusUnsupported       ClaimStatus = "unsupported"
-	ClaimStatusContradicted      ClaimStatus = "contradicted"
-	ClaimStatusNeedsHumanReview  ClaimStatus = "needs_human_review"
-	ClaimStatusRemoved           ClaimStatus = "removed"
+	ClaimStatusUnsupported        ClaimStatus = "unsupported"
+	ClaimStatusContradicted       ClaimStatus = "contradicted"
+	ClaimStatusNeedsHumanReview   ClaimStatus = "needs_human_review"
+	ClaimStatusRemoved            ClaimStatus = "removed"
 )
 
 // Source describes a source used as evidence.
@@ -80,10 +80,10 @@ type Claim struct {
 type HumanDecision string
 
 const (
-	HumanDecisionApprove             HumanDecision = "approve"
+	HumanDecisionApprove               HumanDecision = "approve"
 	HumanDecisionApproveWithMinorEdits HumanDecision = "approve_with_minor_edits"
-	HumanDecisionRequestRevision     HumanDecision = "request_revision"
-	HumanDecisionBlock               HumanDecision = "block"
+	HumanDecisionRequestRevision       HumanDecision = "request_revision"
+	HumanDecisionBlock                 HumanDecision = "block"
 )
 
 // PublishVisibility is intentionally safe-by-default.

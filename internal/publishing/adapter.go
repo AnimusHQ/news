@@ -10,12 +10,12 @@ import (
 
 // PublishResult is returned by publishing adapters.
 type PublishResult struct {
-	EpisodeID string    `json:"episode_id"`
-	Provider  string    `json:"provider"`
-	DraftID   string    `json:"draft_id"`
+	EpisodeID  string                      `json:"episode_id"`
+	Provider   string                      `json:"provider"`
+	DraftID    string                      `json:"draft_id"`
 	Visibility artifacts.PublishVisibility `json:"visibility"`
-	CreatedAt time.Time `json:"created_at"`
-	Notes     []string  `json:"notes,omitempty"`
+	CreatedAt  time.Time                   `json:"created_at"`
+	Notes      []string                    `json:"notes,omitempty"`
 }
 
 // Adapter is the provider-agnostic publishing interface.
@@ -72,11 +72,11 @@ func (a DryRunAdapter) result(pack Pack, note string) PublishResult {
 		provider = "local-dry-run"
 	}
 	return PublishResult{
-		EpisodeID: pack.EpisodeID,
-		Provider:  provider,
-		DraftID:   "dry-run-" + pack.EpisodeID,
+		EpisodeID:  pack.EpisodeID,
+		Provider:   provider,
+		DraftID:    "dry-run-" + pack.EpisodeID,
 		Visibility: pack.Visibility,
-		CreatedAt: now(),
-		Notes:     []string{note, "no network call performed", "no public upload performed"},
+		CreatedAt:  now(),
+		Notes:      []string{note, "no network call performed", "no public upload performed"},
 	}
 }

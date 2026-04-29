@@ -260,3 +260,17 @@ Production target:
 - dashboard for QA and release;
 - post-release analytics loop;
 - incident and correction workflows.
+
+## 15. Operational runbooks
+
+Release and incident procedures live in `docs/runbooks/`:
+
+- `release-checklist.md`
+- `factual-correction.md`
+- `private-data-exposure.md`
+- `provider-outage.md`
+- `render-failure.md`
+- `publishing-failure.md`
+- `model-council-disagreement.md`
+- `cost-budget-exceeded.md`
+- `security-finding.md`

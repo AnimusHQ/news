@@ -10,7 +10,7 @@ import (
 func TestScanPathDetectsFakeToken(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.env")
-	if err := os.WriteFile(path, []byte("API_KEY=abcdefghijklmnop1234567890\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("API_KEY="+fakeSecretValue()+"\n"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
 
@@ -43,11 +43,12 @@ func TestScanPathIgnoresCleanFile(t *testing.T) {
 }
 
 func TestRedactPreservesKeyName(t *testing.T) {
-	redacted := Redact("password=abcdefghijklmnop1234567890")
+	secret := fakeSecretValue()
+	redacted := Redact("password=" + secret)
 	if !strings.Contains(redacted, "password=[REDACTED]") {
 		t.Fatalf("unexpected redaction: %s", redacted)
 	}
-	if strings.Contains(redacted, "abcdefghijklmnop") {
+	if strings.Contains(redacted, secret) {
 		t.Fatalf("secret value was not redacted: %s", redacted)
 	}
 }
@@ -57,4 +58,8 @@ func TestScanPathRequiresRoot(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected empty root to fail")
 	}
+}
+
+func fakeSecretValue() string {
+	return strings.Repeat("a", 16) + "1234567890"
 }

@@ -21,12 +21,12 @@ type Event struct {
 
 // Summary aggregates cost events.
 type Summary struct {
-	EpisodeID string             `json:"episode_id"`
-	Currency  string             `json:"currency"`
-	Total     float64            `json:"total"`
-	ByStage   map[string]float64 `json:"by_stage"`
+	EpisodeID  string             `json:"episode_id"`
+	Currency   string             `json:"currency"`
+	Total      float64            `json:"total"`
+	ByStage    map[string]float64 `json:"by_stage"`
 	ByProvider map[string]float64 `json:"by_provider"`
-	EventCount int               `json:"event_count"`
+	EventCount int                `json:"event_count"`
 }
 
 // BudgetDecision describes cost policy output.
@@ -65,9 +65,9 @@ func Aggregate(events []Event) (Summary, error) {
 		return Summary{}, err
 	}
 	summary := Summary{
-		EpisodeID: first.EpisodeID,
-		Currency:  first.Currency,
-		ByStage:   map[string]float64{},
+		EpisodeID:  first.EpisodeID,
+		Currency:   first.Currency,
+		ByStage:    map[string]float64{},
 		ByProvider: map[string]float64{},
 	}
 	for _, event := range events {

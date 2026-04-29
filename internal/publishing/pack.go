@@ -9,14 +9,14 @@ import (
 
 // PackInput contains source material for publication metadata generation.
 type PackInput struct {
-	EpisodeID       string
-	Title           string
-	Summary         string
-	Sources         []artifacts.Source
-	Chapters        []Chapter
-	CTA             string
-	Visibility      artifacts.PublishVisibility
-	HumanApproved   bool
+	EpisodeID     string
+	Title         string
+	Summary       string
+	Sources       []artifacts.Source
+	Chapters      []Chapter
+	CTA           string
+	Visibility    artifacts.PublishVisibility
+	HumanApproved bool
 }
 
 // Chapter describes a YouTube-style chapter marker.
@@ -27,14 +27,14 @@ type Chapter struct {
 
 // Pack is the safe, reviewable publication metadata bundle.
 type Pack struct {
-	EpisodeID      string                      `json:"episode_id"`
-	TitleCandidates []string                   `json:"title_candidates"`
-	Description    string                      `json:"description"`
-	PinnedComment  string                      `json:"pinned_comment"`
-	CommunityPost  string                      `json:"community_post"`
-	Visibility     artifacts.PublishVisibility `json:"visibility"`
-	HumanApproved  bool                        `json:"human_release_approval"`
-	Warnings       []string                    `json:"warnings,omitempty"`
+	EpisodeID       string                      `json:"episode_id"`
+	TitleCandidates []string                    `json:"title_candidates"`
+	Description     string                      `json:"description"`
+	PinnedComment   string                      `json:"pinned_comment"`
+	CommunityPost   string                      `json:"community_post"`
+	Visibility      artifacts.PublishVisibility `json:"visibility"`
+	HumanApproved   bool                        `json:"human_release_approval"`
+	Warnings        []string                    `json:"warnings,omitempty"`
 }
 
 // GeneratePack creates safe publication metadata. It never defaults to public

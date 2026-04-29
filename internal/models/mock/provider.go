@@ -3,7 +3,7 @@ package mock
 import (
 	"context"
 
-	"github.com/AnimusHQ/news/internal/council"
+	"github.com/AnimusHQ/news/internal/models"
 	"github.com/AnimusHQ/news/internal/models/adapters"
 )
 
@@ -12,7 +12,7 @@ type Provider struct {
 	ModelID    string
 	ProviderID string
 	Task       string
-	Verdict    council.Verdict
+	Verdict    models.Verdict
 	Confidence float64
 	Notes      string
 	Err        error
@@ -42,7 +42,7 @@ func (p Provider) Run(ctx context.Context, req adapters.Request) (adapters.Respo
 	}
 	verdict := p.Verdict
 	if verdict == "" {
-		verdict = council.VerdictApprove
+		verdict = models.VerdictApprove
 	}
 	confidence := p.Confidence
 	if confidence == 0 {
@@ -53,7 +53,7 @@ func (p Provider) Run(ctx context.Context, req adapters.Request) (adapters.Respo
 		notes = "deterministic mock review"
 	}
 
-	review := council.ModelReview{
+	review := models.ModelReview{
 		ModelID:    modelID,
 		Provider:   providerID,
 		Task:       p.Task,

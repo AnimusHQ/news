@@ -74,6 +74,29 @@ func writeCompleteEpisodeFixture(t *testing.T, dir string) {
     }
   ]
 }`)
+		case "research_pack.json":
+			writeArtifact(t, path, `{
+  "schema_version": "1.0",
+  "episode_id": "episode-test",
+  "artifact_id": "research-test",
+  "created_at": "2026-04-29T00:00:00Z",
+  "created_by": "test",
+  "status": "draft",
+  "core_question": "How does the test pipeline preserve source grounding?",
+  "learning_objectives": ["Explain source-backed dry-run validation."],
+  "sources": [
+    {
+      "source_id": "source-test",
+      "title": "Test primary source",
+      "uri": "https://example.com/test-source",
+      "type": "official_docs",
+      "trust_level": "primary",
+      "license_notes": "test fixture"
+    }
+  ],
+  "forbidden_simplifications": ["Do not treat mock review as human approval."],
+  "visual_opportunities": ["pipeline diagram"]
+}`)
 		case "publish_manifest.json":
 			writeArtifact(t, path, `{
   "schema_version": "1.0",

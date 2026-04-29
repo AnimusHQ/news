@@ -31,10 +31,10 @@ func TestGeneratePackDefaultsToPrivate(t *testing.T) {
 
 func TestGeneratePackRejectsPublicWithoutApproval(t *testing.T) {
 	_, err := GeneratePack(PackInput{
-		EpisodeID:   "episode-1",
-		Title:       "What Happens After git push?",
-		Summary:     "A source-grounded explanation.",
-		Visibility:  artifacts.PublishVisibilityPublic,
+		EpisodeID:     "episode-1",
+		Title:         "What Happens After git push?",
+		Summary:       "A source-grounded explanation.",
+		Visibility:    artifacts.PublishVisibilityPublic,
 		HumanApproved: false,
 	})
 	if err == nil {

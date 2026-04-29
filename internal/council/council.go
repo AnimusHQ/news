@@ -1,15 +1,19 @@
 package council
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/AnimusHQ/news/internal/models"
+)
 
 // Verdict is a model review outcome.
-type Verdict string
+type Verdict = models.Verdict
 
 const (
-	VerdictApprove                 Verdict = "approve"
-	VerdictApproveWithSuggestions  Verdict = "approve_with_suggestions"
-	VerdictRequestRevision         Verdict = "request_revision"
-	VerdictBlock                   Verdict = "block"
+	VerdictApprove                = models.VerdictApprove
+	VerdictApproveWithSuggestions = models.VerdictApproveWithSuggestions
+	VerdictRequestRevision        = models.VerdictRequestRevision
+	VerdictBlock                  = models.VerdictBlock
 )
 
 // Consensus is the normalized council decision.
@@ -23,22 +27,15 @@ const (
 )
 
 // ModelReview is one reviewer model's output.
-type ModelReview struct {
-	ModelID    string  `json:"model_id"`
-	Provider   string  `json:"provider"`
-	Task       string  `json:"task"`
-	Verdict    Verdict `json:"verdict"`
-	Confidence float64 `json:"confidence"`
-	Notes      string  `json:"notes"`
-}
+type ModelReview = models.ModelReview
 
 // Report is the canonical in-memory council aggregation result.
 type Report struct {
-	Reviews           []ModelReview `json:"reviews"`
-	Consensus         Consensus     `json:"consensus"`
-	Dissent           []ModelReview `json:"dissent,omitempty"`
+	Reviews            []ModelReview `json:"reviews"`
+	Consensus          Consensus     `json:"consensus"`
+	Dissent            []ModelReview `json:"dissent,omitempty"`
 	BlockingObjections []ModelReview `json:"blocking_objections,omitempty"`
-	OperatorSummary   string        `json:"operator_summary"`
+	OperatorSummary    string        `json:"operator_summary"`
 }
 
 // Aggregate turns independent model reviews into a council report. It preserves

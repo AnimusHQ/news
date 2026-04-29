@@ -28,6 +28,25 @@ func run(args []string) error {
 
 	ctx := context.Background()
 	switch args[1] {
+	case "validate":
+		jsonOutput, path, err := parseValidateArgs(args[2:])
+		if err != nil {
+			return err
+		}
+		report := artifacts.ValidatePath(path)
+		if jsonOutput {
+			encoded, err := json.MarshalIndent(report, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(encoded))
+		} else if report.Valid {
+			fmt.Printf("valid: %s\n", path)
+		}
+		if !report.Valid {
+			return artifacts.ValidateReport(report)
+		}
+		return nil
 	case "validate-episode":
 		if len(args) != 3 {
 			return fmt.Errorf("usage: animus-news validate-episode <episode-dir>")
@@ -108,10 +127,21 @@ func run(args []string) error {
 	}
 }
 
+func parseValidateArgs(args []string) (bool, string, error) {
+	if len(args) == 1 {
+		return false, args[0], nil
+	}
+	if len(args) == 2 && args[0] == "--json" {
+		return true, args[1], nil
+	}
+	return false, "", fmt.Errorf("usage: animus-news validate [--json] <path>")
+}
+
 func printUsage() {
 	fmt.Println(`Animus News CLI
 
 Usage:
+  animus-news validate [--json] <path>
   animus-news validate-episode <episode-dir>
   animus-news dry-run <episode-dir>
   animus-news scan-secrets <path>
