@@ -8,6 +8,7 @@ import (
 
 	"github.com/AnimusHQ/news/internal/artifacts"
 	"github.com/AnimusHQ/news/internal/pipeline"
+	"github.com/AnimusHQ/news/internal/security"
 	"github.com/AnimusHQ/news/internal/temporalops"
 	"github.com/AnimusHQ/news/internal/worker"
 )
@@ -45,6 +46,23 @@ func run(args []string) error {
 			return err
 		}
 		fmt.Println(report.String())
+		return nil
+	case "scan-secrets":
+		if len(args) != 3 {
+			return fmt.Errorf("usage: animus-news scan-secrets <path>")
+		}
+		summary, err := security.ScanPath(args[2])
+		if err != nil {
+			return err
+		}
+		encoded, err := json.MarshalIndent(summary, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(encoded))
+		if summary.HasHighRiskFindings() {
+			return fmt.Errorf("high-risk secret findings detected")
+		}
 		return nil
 	case "worker":
 		return worker.Run(ctx, worker.Config{})
@@ -96,6 +114,7 @@ func printUsage() {
 Usage:
   animus-news validate-episode <episode-dir>
   animus-news dry-run <episode-dir>
+  animus-news scan-secrets <path>
   animus-news worker
   animus-news start-workflow <episode-id> <episode-dir>
   animus-news signal-human-qa <workflow-id> <approve|approve_with_minor_edits|request_revision|block>
