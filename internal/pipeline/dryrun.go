@@ -3,24 +3,28 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/AnimusHQ/news/internal/artifacts"
 	"github.com/AnimusHQ/news/internal/council"
+	"github.com/AnimusHQ/news/internal/verification"
 )
 
 // DryRunReport is a local, safe summary of the current pipeline readiness.
 type DryRunReport struct {
-	EpisodeDir        string
-	ArtifactsValid    bool
-	ValidationIssues  []artifacts.ValidationIssue
-	CouncilConsensus  council.Consensus
-	CouncilSelected   []string
-	CouncilDissent    int
-	CouncilBlockers   int
-	WorkflowReached   []string
-	Warnings          []string
-	Blockers          []string
+	EpisodeDir           string
+	ArtifactsValid       bool
+	ValidationIssues     []artifacts.ValidationIssue
+	CouncilConsensus     council.Consensus
+	CouncilSelected      []string
+	CouncilDissent       int
+	CouncilBlockers      int
+	VerificationDecision string
+	VerificationBlockers int
+	WorkflowReached      []string
+	Warnings             []string
+	Blockers             []string
 }
 
 func (r DryRunReport) String() string {
@@ -33,6 +37,10 @@ func (r DryRunReport) String() string {
 		fmt.Fprintf(&b, "council_selected: %s\n", strings.Join(r.CouncilSelected, ", "))
 		fmt.Fprintf(&b, "council_dissent_count: %d\n", r.CouncilDissent)
 		fmt.Fprintf(&b, "council_blocker_count: %d\n", r.CouncilBlockers)
+	}
+	if r.VerificationDecision != "" {
+		fmt.Fprintf(&b, "verification_decision: %s\n", r.VerificationDecision)
+		fmt.Fprintf(&b, "verification_blocker_count: %d\n", r.VerificationBlockers)
 	}
 	fmt.Fprintf(&b, "workflow_reached: %s\n", strings.Join(r.WorkflowReached, " -> "))
 	if len(r.ValidationIssues) > 0 {
@@ -67,8 +75,9 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		WorkflowReached: []string{
 			"validate_artifacts",
 			"mock_research_ready",
-			"mock_claim_verification",
+			"load_claims",
 			"local_multimodel_council",
+			"deterministic_claim_verification",
 			"human_qa_required",
 			"dry_run_publish_blocked_by_design",
 		},
@@ -87,6 +96,12 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 	}
 	report.ArtifactsValid = true
 
+	claimsFile, err := artifacts.LoadClaimsFile(filepath.Join(episodeDir, "claims.json"))
+	if err != nil {
+		report.Blockers = append(report.Blockers, fmt.Sprintf("claim loading failed: %v", err))
+		return report, err
+	}
+
 	councilResult, err := RunLocalMockCouncil(context.Background(), DefaultModelRegistryPath)
 	if err != nil {
 		report.Blockers = append(report.Blockers, fmt.Sprintf("local multimodel council failed: %v", err))
@@ -102,6 +117,17 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 	if councilResult.Report.Consensus == council.ConsensusBlocked {
 		report.Blockers = append(report.Blockers, "local council blocked the artifact")
 		return report, fmt.Errorf("local council blocked the artifact")
+	}
+
+	verificationReport, err := verification.VerifyClaims(claimsFile.Claims, councilResult.Report)
+	if err != nil {
+		report.Blockers = append(report.Blockers, fmt.Sprintf("claim verification failed: %v", err))
+		return report, err
+	}
+	report.VerificationDecision = verificationReport.Decision
+	report.VerificationBlockers = len(verificationReport.BlockingIssues)
+	if verificationReport.Decision != "approved" {
+		report.Warnings = append(report.Warnings, "claim verification requires revision before production publication")
 	}
 
 	return report, nil
