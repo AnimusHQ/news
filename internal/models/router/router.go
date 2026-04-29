@@ -8,13 +8,26 @@ import (
 	"github.com/AnimusHQ/news/internal/models"
 )
 
+// Options controls model selection policy.
+type Options struct {
+	// AllowDegraded permits degraded models to be selected when healthy active
+	// models are unavailable or lower ranked. It should be false for strict
+	// production gates unless an explicit fallback policy allows degradation.
+	AllowDegraded bool
+}
+
 // Router selects models for a task without calling any provider.
 type Router struct {
 	registry []models.ModelRecord
+	options  Options
 }
 
 func New(registry []models.ModelRecord) Router {
-	return Router{registry: append([]models.ModelRecord(nil), registry...)}
+	return NewWithOptions(registry, Options{})
+}
+
+func NewWithOptions(registry []models.ModelRecord, options Options) Router {
+	return Router{registry: append([]models.ModelRecord(nil), registry...), options: options}
 }
 
 func (r Router) Route(req models.TaskRequest) (models.RoutingDecision, error) {
@@ -33,6 +46,10 @@ func (r Router) Route(req models.TaskRequest) (models.RoutingDecision, error) {
 	for _, model := range r.registry {
 		if model.Status == models.ModelStatusDisabled {
 			rejected = append(rejected, models.RejectedModel{ModelID: model.ID, Reason: "model disabled"})
+			continue
+		}
+		if model.Status == models.ModelStatusDegraded && !r.options.AllowDegraded {
+			rejected = append(rejected, models.RejectedModel{ModelID: model.ID, Reason: "model degraded and fallback policy disallows degraded selection"})
 			continue
 		}
 		if !hasCapability(model.Capabilities, req.Capability) {
