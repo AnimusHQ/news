@@ -67,7 +67,7 @@ func TestRunValidateCommandJSONOutput(t *testing.T) {
 			t.Fatalf("run validate --json failed: %v", err)
 		}
 	})
-	if !strings.Contains(stdout, `"valid": true`) {
+	if !strings.Contains(stdout, "\"valid\": true") {
 		t.Fatalf("expected JSON validation output, got %q", stdout)
 	}
 }
@@ -75,7 +75,7 @@ func TestRunValidateCommandJSONOutput(t *testing.T) {
 func TestRunValidateCommandFailsInvalidArtifact(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "research_pack.json")
-	writeCLIArtifact(t, path, `{"schema_version":"1.0"}`)
+	writeCLIArtifact(t, path, "{\"schema_version\":\"1.0\"}")
 
 	err := run([]string{"animus-news", "validate", path})
 	if err == nil {
@@ -119,23 +119,23 @@ func writeCLIArtifact(t *testing.T, path string, content string) {
 }
 
 func validResearchPack() string {
-	return `{
-  "schema_version": "1.0",
-  "episode_id": "episode-test",
-  "artifact_id": "research-test",
-  "created_at": "2026-04-29T00:00:00Z",
-  "created_by": "test",
-  "status": "draft",
-  "core_question": "How does validation work?",
-  "learning_objectives": ["Explain validation."],
-  "sources": [
-    {
-      "source_id": "source-test",
-      "title": "Test source",
-      "uri": "https://example.com/source",
-      "type": "official_docs",
-      "trust_level": "primary"
-    }
-  ]
-}`
+	return "{\n" +
+		"  \"schema_version\": \"1.0\",\n" +
+		"  \"episode_id\": \"episode-test\",\n" +
+		"  \"artifact_id\": \"research-test\",\n" +
+		"  \"created_at\": \"2026-04-29T00:00:00Z\",\n" +
+		"  \"created_by\": \"test\",\n" +
+		"  \"status\": \"draft\",\n" +
+		"  \"core_question\": \"How does validation work?\",\n" +
+		"  \"learning_objectives\": [\"Explain validation.\"],\n" +
+		"  \"sources\": [\n" +
+		"    {\n" +
+		"      \"source_id\": \"source-test\",\n" +
+		"      \"title\": \"Test source\",\n" +
+		"      \"uri\": \"https://example.com/source\",\n" +
+		"      \"type\": \"official_docs\",\n" +
+		"      \"trust_level\": \"primary\"\n" +
+		"    }\n" +
+		"  ]\n" +
+		"}\n"
 }
