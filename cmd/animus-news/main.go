@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/AnimusHQ/news/internal/artifacts"
+	claimextractor "github.com/AnimusHQ/news/internal/claims"
 	"github.com/AnimusHQ/news/internal/pipeline"
 	"github.com/AnimusHQ/news/internal/security"
 	"github.com/AnimusHQ/news/internal/temporalops"
@@ -55,6 +56,23 @@ func run(args []string) error {
 			return err
 		}
 		fmt.Printf("episode valid: %s\n", args[2])
+		return nil
+	case "extract-claims":
+		if len(args) != 3 {
+			return fmt.Errorf("usage: animus-news extract-claims <episode-dir>")
+		}
+		result, err := claimextractor.ExtractEpisode(args[2])
+		if err != nil {
+			return err
+		}
+		for _, warning := range result.Warnings {
+			fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
+		}
+		encoded, err := json.MarshalIndent(result.ClaimsFile, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(encoded))
 		return nil
 	case "dry-run":
 		if len(args) != 3 {
@@ -143,6 +161,7 @@ func printUsage() {
 Usage:
   animus-news validate [--json] <path>
   animus-news validate-episode <episode-dir>
+  animus-news extract-claims <episode-dir>
   animus-news dry-run <episode-dir>
   animus-news scan-secrets <path>
   animus-news worker

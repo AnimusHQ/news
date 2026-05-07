@@ -33,11 +33,11 @@ It is not ready for public launch. Public launch remains blocked by placeholder 
 | ACC-012 | Partial | Required artifact and release-safety validation exists; stale dependency/hash enforcement is not implemented. |
 | ACC-013 | Complete | Source registry validates, ranks trust, and blocks community-only high-risk authority. |
 | ACC-014 | Partial | Research audit exists; a full research pack builder activity is not implemented. |
-| ACC-015 | Missing | Script claim extractor package/activity is not implemented. |
-| ACC-016 | Missing | Human QA decision packet generator is not implemented beyond fixture artifacts. |
-| ACC-017 | Missing | Storyboard generator is not implemented beyond pilot fixture artifacts. |
-| ACC-018 | Missing | Deterministic render/preview generator is not implemented beyond render manifest fixtures. |
-| ACC-019 | Partial | Production QA is represented by validation/fixtures and workflow placeholder, not a full QA package. |
+| ACC-015 | Complete | Deterministic script claim extractor package, activity, CLI command, tests, and dry-run integration exist. |
+| ACC-016 | Complete | Deterministic human QA packet generator, activity, tests, and dry-run recommendation summary exist; it does not mark operator approval. |
+| ACC-017 | Complete | Deterministic storyboard generator, activity, validation-backed tests, and dry-run gate check exist; current pilot correctly skips generation until human QA approval. |
+| ACC-018 | Complete | Deterministic local HTML preview generator, placeholder asset provenance, render manifest generation, activity, tests, and dry-run render gate check exist. |
+| ACC-019 | Complete | Deterministic production QA package, activity, render/output/provenance/policy/verification/human-QA checks, tests, and dry-run gate check exist. |
 | ACC-020 | Partial | Publish pack generator exists with safe defaults, but chapters/disclosure handling is minimal. |
 | ACC-021 | Complete | Safe dry-run publishing adapter blocks public upload and requires human approval for scheduling. |
 | ACC-022 | Missing | Analytics import interface/package is not implemented beyond fixture artifact. |
@@ -74,10 +74,9 @@ go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 
 ## Recommended Next Slice
 
-Implement ACC-015 through ACC-019 as one or more bounded Go task packs:
+Implement ACC-020 through ACC-023 as bounded Go task packs:
 
-1. script claim extractor;
-2. human QA packet generator;
-3. storyboard generator;
-4. deterministic preview/render manifest generator;
-5. production QA checks over real generated outputs.
+1. publish pack chapters and disclosure handling;
+2. safe private/scheduled publishing refinements;
+3. analytics fixture import;
+4. advisory analytics insight reports.

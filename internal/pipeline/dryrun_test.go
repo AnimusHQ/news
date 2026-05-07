@@ -33,6 +33,21 @@ func TestDryRunPassesForCompleteBundle(t *testing.T) {
 	if report.CouncilDissent != 1 {
 		t.Fatalf("expected one dissenting revision review, got %d", report.CouncilDissent)
 	}
+	if report.HumanQARecommendation != artifacts.HumanDecisionRequestRevision {
+		t.Fatalf("expected human QA request_revision recommendation, got %s", report.HumanQARecommendation)
+	}
+	if report.HumanQAUnresolved == 0 {
+		t.Fatal("expected human QA packet to surface unresolved generated claims")
+	}
+	if report.StoryboardStatus != "skipped_by_human_qa_gate" {
+		t.Fatalf("expected storyboard to stay gated by human QA, got %s", report.StoryboardStatus)
+	}
+	if report.RenderStatus != "skipped_by_storyboard_gate" {
+		t.Fatalf("expected render preview to stay gated by storyboard, got %s", report.RenderStatus)
+	}
+	if report.ProductionQAStatus != "skipped_by_render_gate" {
+		t.Fatalf("expected production QA to stay gated by render preview, got %s", report.ProductionQAStatus)
+	}
 }
 
 func TestDryRunFailsForMissingBundle(t *testing.T) {
@@ -52,8 +67,15 @@ func writeCompleteEpisodeFixture(t *testing.T, dir string) {
 		switch name {
 		case "topic.yaml", "storyboard.yaml":
 			writeArtifact(t, path, fmt.Sprintf("schema_version: \"1.0\"\nepisode_id: \"episode-test\"\nartifact_id: \"%s\"\ncreated_at: \"2026-04-29T00:00:00Z\"\ncreated_by: \"test\"\nstatus: \"draft\"\n", name))
-		case "editorial_brief.md", "script.md":
+		case "editorial_brief.md":
 			writeArtifact(t, path, "# Test\n")
+		case "script.md":
+			writeArtifact(t, path, `# Test
+
+CI validates the change.
+Build artifacts may be produced.
+Deployment strategy moves the change toward production.
+`)
 		case "claims.json":
 			writeArtifact(t, path, `{
   "schema_version": "1.0",

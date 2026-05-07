@@ -93,6 +93,7 @@ go vet ./...
 go run ./cmd/animus-news scan-secrets .
 go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
 go run ./cmd/animus-news validate --json episodes/0001-after-git-push/research_pack.json
+go run ./cmd/animus-news extract-claims episodes/0001-after-git-push
 go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 ```
 
@@ -108,11 +109,11 @@ On Windows without Make:
 powershell -ExecutionPolicy Bypass -File scripts/start.ps1
 ```
 
-Expected result: the dry run validates artifacts, audits research/source authority, routes local mock council reviewers, verifies claims deterministically, generates a safe publish pack, and creates a private dry-run draft record. It must not call real providers or upload publicly.
+Expected result: the dry run validates artifacts, audits research/source authority, extracts claims from the script, routes local mock council reviewers, verifies claims deterministically, generates a human QA decision packet, checks the storyboard/render/production-QA gates, generates a safe publish pack, and creates a private dry-run draft record. It must not call real providers or upload publicly.
 
 The pilot intentionally reports `revision_required` / `request_revision` because its evidence locators are placeholders. That is a launch blocker, not a startup failure.
 
-See [Taskpack Release Audit](docs/TASKPACK_RELEASE_AUDIT.md) for current taskpack status and launch blockers.
+See [Development Plan](docs/DEVELOPMENT_PLAN.md) for the phased implementation plan and [Taskpack Release Audit](docs/TASKPACK_RELEASE_AUDIT.md) for current taskpack status and launch blockers.
 
 ## CLI commands
 
@@ -121,6 +122,7 @@ go run ./cmd/animus-news help
 go run ./cmd/animus-news validate <path>
 go run ./cmd/animus-news validate --json <path>
 go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
+go run ./cmd/animus-news extract-claims episodes/0001-after-git-push
 go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 go run ./cmd/animus-news scan-secrets .
 ```
