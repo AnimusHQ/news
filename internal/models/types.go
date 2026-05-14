@@ -102,9 +102,10 @@ type TaskRequest struct {
 
 // RoutingDecision explains the router's choice.
 type RoutingDecision struct {
-	Selected []ModelRecord
-	Rejected []RejectedModel
-	Policy   string
+	Selected        []ModelRecord
+	Rejected        []RejectedModel
+	Policy          string
+	FallbackReasons []string
 }
 
 // RejectedModel records why a candidate was not selected.

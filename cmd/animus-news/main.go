@@ -146,6 +146,9 @@ func run(args []string) error {
 }
 
 func parseValidateArgs(args []string) (bool, string, error) {
+	if len(args) == 0 || args[0] == "--json" && len(args) != 2 {
+		return false, "", fmt.Errorf("usage: animus-news validate [--json] <path>")
+	}
 	if len(args) == 1 {
 		return false, args[0], nil
 	}

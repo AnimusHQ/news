@@ -127,17 +127,5 @@ func validateArtifactFile(report *ValidationReport, path string) {
 		return
 	}
 	validateEnvelope(report, name, envelope)
-
-	switch name {
-	case "claims.json":
-		validateClaimsCoverage(report, path)
-	case "human_qa_report.json":
-		validateHumanQAExplicit(report, path)
-	case "publish_manifest.json":
-		validatePublishManifestSafety(report, path)
-	case "research_pack.json":
-		if _, err := LoadResearchPackFile(path); err != nil {
-			report.add(name, "", err.Error())
-		}
-	}
+	validateArtifactSchema(report, name, path)
 }

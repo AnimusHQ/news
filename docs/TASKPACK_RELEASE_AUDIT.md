@@ -20,7 +20,7 @@ It is not ready for public launch. Public launch remains blocked by placeholder 
 |---|---|---|
 | ACC-000 | Complete | Go module, CLI, Make targets, and package baseline exist. |
 | ACC-001 | Complete | GitHub Actions runs Go checks, secret scan, pilot validation, and dry-run. |
-| ACC-002 | Partial | Core structs and validation exist, but schemas are still minimal and not strict per artifact. |
+| ACC-002 | Complete | Go runtime validators now cover canonical artifact contracts, common metadata, status/schema enums, source provenance, claims, QA decisions, publish safety, analytics metrics, and valid/invalid fixture tests for major artifact types. |
 | ACC-003 | Complete | CLI supports `validate`, `validate --json`, and `validate-episode`. |
 | ACC-004 | Complete | Pilot episode artifact bundle exists and validates. |
 | ACC-005 | Complete | Model registry config and loader exist. |
@@ -29,25 +29,25 @@ It is not ready for public launch. Public launch remains blocked by placeholder 
 | ACC-008 | Complete | Deterministic mock providers support verdicts and failure injection. |
 | ACC-009 | Complete | Council aggregation preserves dissent and blockers. |
 | ACC-010 | Complete | Claim verification enforces source coverage and high-risk blockers. |
-| ACC-011 | Partial | Temporal workflow skeleton exists, but the full documented state table is not implemented as a reusable state machine. |
-| ACC-012 | Partial | Required artifact and release-safety validation exists; stale dependency/hash enforcement is not implemented. |
+| ACC-011 | Complete | Canonical Go episode state machine implements the full documented state table, allowed transitions, actor/reason/timestamp metadata, explicit block/unblock behavior, human-required labels, and invalid-transition tests. |
+| ACC-012 | Complete | Lifecycle transition dependency validator enforces required artifacts, schema validation, rejected/superseded status, source artifact hash checks, and QA/production/release gates with machine-readable issues. |
 | ACC-013 | Complete | Source registry validates, ranks trust, and blocks community-only high-risk authority. |
-| ACC-014 | Partial | Research audit exists; a full research pack builder activity is not implemented. |
+| ACC-014 | Complete | Deterministic research pack builder and activity build draft packs from supplied source records/snippets, preserve locators, rank sources, and flag high-risk topics without primary sources. |
 | ACC-015 | Complete | Deterministic script claim extractor package, activity, CLI command, tests, and dry-run integration exist. |
 | ACC-016 | Complete | Deterministic human QA packet generator, activity, tests, and dry-run recommendation summary exist; it does not mark operator approval. |
 | ACC-017 | Complete | Deterministic storyboard generator, activity, validation-backed tests, and dry-run gate check exist; current pilot correctly skips generation until human QA approval. |
 | ACC-018 | Complete | Deterministic local HTML preview generator, placeholder asset provenance, render manifest generation, activity, tests, and dry-run render gate check exist. |
 | ACC-019 | Complete | Deterministic production QA package, activity, render/output/provenance/policy/verification/human-QA checks, tests, and dry-run gate check exist. |
-| ACC-020 | Partial | Publish pack generator exists with safe defaults, but chapters/disclosure handling is minimal. |
-| ACC-021 | Complete | Safe dry-run publishing adapter blocks public upload and requires human approval for scheduling. |
-| ACC-022 | Missing | Analytics import interface/package is not implemented beyond fixture artifact. |
-| ACC-023 | Missing | Analytics insight generator is not implemented beyond fixture artifact. |
-| ACC-024 | Partial | Structured audit events and memory sink exist; workflow/router integration is minimal. |
-| ACC-025 | Complete | Cost events, aggregation, and budget decisions exist. |
-| ACC-026 | Partial | Router handles degraded/disabled model policy; standalone provider health/fallback package is not implemented. |
+| ACC-020 | Complete | Strict release pack generator requires approved production QA, includes storyboard chapters, sources, disclosure fields, and a validating publish manifest draft. |
+| ACC-021 | Complete | Safe dry-run publishing adapter blocks public upload, requires human approval for scheduling, validates metadata, exposes draft status, and returns normalized adapter errors. |
+| ACC-022 | Complete | Provider-agnostic analytics adapter interface, offline fixture adapter, canonical normalization, missing metric reporting, and validating analytics report generation exist. |
+| ACC-023 | Complete | Advisory analytics insight reports cover retention, CTR without clickbait, community conversion, cost, factual correction signals, and data quality notes. |
+| ACC-024 | Complete | Structured audit events, redaction, release-approval actor validation, memory sink, JSON Lines output, and workflow transition audit events exist. |
+| ACC-025 | Complete | Cost events, aggregation by episode/stage/provider/model/day, and warn/approval/block budget policy decisions exist. |
+| ACC-026 | Complete | Provider health states, fallback policy package, router health integration, fallback reasons, disabled/degraded/unknown provider tests, and privacy-blocked fallback tests exist. |
 | ACC-027 | Complete | Local secret scanner, redaction helper, CLI, tests, and CI integration exist. |
 | ACC-028 | Complete | Required operational runbooks exist and are linked from Operations. |
-| ACC-029 | Partial | End-to-end local dry-run passes, but it does not generate every downstream artifact from scratch. |
+| ACC-029 | Complete | Default pilot dry-run remains safely gated by placeholder evidence, and an approved local fixture path now exercises storyboard generation, render preview, production QA approval, publish draft generation, fixture analytics import, insight generation, generated output paths, and blocked-path tests without network calls. |
 
 ## Current Release Checks
 
@@ -68,15 +68,14 @@ go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 - Pilot `claims.json` still uses placeholder evidence ranges and `needs_human_review` statuses.
 - `verification_report.json`, `multimodel_approval_report.json`, and `human_qa_report.json` intentionally request revision.
 - Real model/provider adapters are not implemented.
-- Rendering, analytics import, and insight generation are fixtures/scaffolds.
+- Rendering, analytics import, and insight generation now have deterministic local packages, but they still require real approved inputs before public launch.
 - Durable Postgres/object storage and immutable evidence bundles are not implemented.
 - No real private/scheduled platform adapter is configured.
 
 ## Recommended Next Slice
 
-Implement ACC-020 through ACC-023 as bounded Go task packs:
+Implement the next post-taskpack production-readiness slice:
 
-1. publish pack chapters and disclosure handling;
-2. safe private/scheduled publishing refinements;
-3. analytics fixture import;
-4. advisory analytics insight reports.
+1. introduce durable persistence and object storage behind Go interfaces.
+2. add real provider and private platform sandbox adapters behind existing interfaces.
+3. keep local mock/dry-run paths as the default CI-safe path.

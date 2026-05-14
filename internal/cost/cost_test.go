@@ -1,11 +1,14 @@
 package cost
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestAggregateCombinesCostEvents(t *testing.T) {
 	summary, err := Aggregate([]Event{
-		{EpisodeID: "episode-1", Stage: "model_council", Provider: "mock", OperationType: "review", EstimatedCost: 1.25, Currency: "USD"},
-		{EpisodeID: "episode-1", Stage: "verification", Provider: "mock", OperationType: "verify", EstimatedCost: 2.75, Currency: "USD"},
+		{EpisodeID: "episode-1", Stage: "model_council", Provider: "mock", ModelID: "model-a", OperationType: "review", EstimatedCost: 1.25, Currency: "USD", CreatedAt: time.Date(2026, 5, 7, 10, 0, 0, 0, time.UTC)},
+		{EpisodeID: "episode-1", Stage: "verification", Provider: "mock", ModelID: "model-a", OperationType: "verify", EstimatedCost: 2.75, Currency: "USD", CreatedAt: time.Date(2026, 5, 7, 11, 0, 0, 0, time.UTC)},
 	})
 	if err != nil {
 		t.Fatalf("aggregate failed: %v", err)
@@ -18,6 +21,12 @@ func TestAggregateCombinesCostEvents(t *testing.T) {
 	}
 	if summary.ByProvider["mock"] != 4.0 {
 		t.Fatalf("unexpected provider cost")
+	}
+	if summary.ByModel["model-a"] != 4.0 {
+		t.Fatalf("unexpected model cost")
+	}
+	if summary.ByDay["2026-05-07"] != 4.0 {
+		t.Fatalf("unexpected day cost")
 	}
 	if summary.EventCount != 2 {
 		t.Fatalf("expected 2 events, got %d", summary.EventCount)
@@ -52,5 +61,27 @@ func TestCheckBudgetAllowsWithinBudget(t *testing.T) {
 	decision := CheckBudget(Summary{Total: 5, Currency: "USD"}, 5)
 	if !decision.Allowed {
 		t.Fatalf("expected within-budget summary to be allowed: %s", decision.Reason)
+	}
+}
+
+func TestEvaluateBudgetWarnsAndRequiresApproval(t *testing.T) {
+	warn := EvaluateBudget(Summary{Total: 7, Currency: "USD"}, BudgetPolicy{WarnAt: 5, RequireApprovalAt: 10, BlockAt: 20, Currency: "USD"}, false)
+	if !warn.Allowed || warn.Action != BudgetActionWarn {
+		t.Fatalf("expected warning decision, got %+v", warn)
+	}
+	approval := EvaluateBudget(Summary{Total: 12, Currency: "USD"}, BudgetPolicy{WarnAt: 5, RequireApprovalAt: 10, BlockAt: 20, Currency: "USD"}, false)
+	if approval.Allowed || approval.Action != BudgetActionRequireApproval {
+		t.Fatalf("expected approval-required decision, got %+v", approval)
+	}
+}
+
+func TestEvaluateBudgetBlocksNonCriticalAutomation(t *testing.T) {
+	decision := EvaluateBudget(Summary{Total: 25, Currency: "USD"}, BudgetPolicy{BlockAt: 20, Currency: "USD"}, false)
+	if decision.Allowed || decision.Action != BudgetActionBlock {
+		t.Fatalf("expected block decision, got %+v", decision)
+	}
+	critical := EvaluateBudget(Summary{Total: 25, Currency: "USD"}, BudgetPolicy{BlockAt: 20, Currency: "USD"}, true)
+	if critical.Allowed || critical.Action != BudgetActionRequireApproval {
+		t.Fatalf("critical over-budget work should require approval, got %+v", critical)
 	}
 }

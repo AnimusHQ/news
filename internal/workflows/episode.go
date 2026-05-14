@@ -1,8 +1,10 @@
 package workflows
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/AnimusHQ/news/internal/audit"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -22,9 +24,10 @@ type EpisodeWorkflowResult struct {
 
 // EpisodeWorkflowState is returned by workflow queries.
 type EpisodeWorkflowState struct {
-	EpisodeID string   `json:"episode_id"`
-	State     string   `json:"state"`
-	Notes     []string `json:"notes"`
+	EpisodeID   string        `json:"episode_id"`
+	State       string        `json:"state"`
+	Notes       []string      `json:"notes"`
+	AuditEvents []audit.Event `json:"audit_events,omitempty"`
 }
 
 // HumanQADecisionSignalName is the signal used to continue after human QA.
@@ -59,68 +62,84 @@ func EpisodeLifecycleWorkflow(ctx workflow.Context, input EpisodeWorkflowInput) 
 	}
 	ctx = workflow.WithActivityOptions(ctx, activityOptions)
 
-	state.State = "validating_artifacts"
+	recordTransition(ctx, &state, "validating_artifacts", "starting artifact validation")
 	var validation string
 	if err := workflow.ExecuteActivity(ctx, "ValidateEpisodeActivity", input.EpisodeDir).Get(ctx, &validation); err != nil {
-		state.State = "blocked"
+		recordTransition(ctx, &state, "blocked", "artifact validation failed")
 		state.Notes = append(state.Notes, "artifact validation failed")
 		return EpisodeWorkflowResult{EpisodeID: input.EpisodeID, State: state.State, Notes: state.Notes}, err
 	}
 	state.Notes = append(state.Notes, validation)
 
-	state.State = "running_model_council"
+	recordTransition(ctx, &state, "running_model_council", "starting model council")
 	var council string
 	if err := workflow.ExecuteActivity(ctx, "MockCouncilActivity", input.EpisodeID).Get(ctx, &council); err != nil {
-		state.State = "blocked"
+		recordTransition(ctx, &state, "blocked", "mock council failed")
 		state.Notes = append(state.Notes, "mock council failed")
 		return EpisodeWorkflowResult{EpisodeID: input.EpisodeID, State: state.State, Notes: state.Notes}, err
 	}
 	state.Notes = append(state.Notes, council)
 
-	state.State = "awaiting_human_qa"
+	recordTransition(ctx, &state, "awaiting_human_qa", "waiting for human QA signal")
 	var humanDecision string
 	humanSignal := workflow.GetSignalChannel(ctx, HumanQADecisionSignalName)
 	humanSignal.Receive(ctx, &humanDecision)
 	if humanDecision != "approve" && humanDecision != "approve_with_minor_edits" {
-		state.State = "blocked"
+		recordTransition(ctx, &state, "blocked", "human QA did not approve")
 		state.Notes = append(state.Notes, "human QA did not approve")
 		return EpisodeWorkflowResult{EpisodeID: input.EpisodeID, State: state.State, Notes: state.Notes}, nil
 	}
 	state.Notes = append(state.Notes, "human QA approved")
 
-	state.State = "production_qa"
+	recordTransition(ctx, &state, "production_qa", "starting production QA")
 	var productionQA string
 	if err := workflow.ExecuteActivity(ctx, "ProductionQAActivity", input.EpisodeID).Get(ctx, &productionQA); err != nil {
-		state.State = "blocked"
+		recordTransition(ctx, &state, "blocked", "production QA failed")
 		state.Notes = append(state.Notes, "production QA failed")
 		return EpisodeWorkflowResult{EpisodeID: input.EpisodeID, State: state.State, Notes: state.Notes}, err
 	}
 	state.Notes = append(state.Notes, productionQA)
 
-	state.State = "awaiting_release_approval"
+	recordTransition(ctx, &state, "awaiting_release_approval", "waiting for release approval signal")
 	var releaseDecision string
 	releaseSignal := workflow.GetSignalChannel(ctx, ReleaseApprovalSignalName)
 	releaseSignal.Receive(ctx, &releaseDecision)
 	if releaseDecision != "approve" {
-		state.State = "blocked"
+		recordTransition(ctx, &state, "blocked", "release approval denied")
 		state.Notes = append(state.Notes, "release approval denied")
 		return EpisodeWorkflowResult{EpisodeID: input.EpisodeID, State: state.State, Notes: state.Notes}, nil
 	}
 	state.Notes = append(state.Notes, "release approved")
 
-	state.State = "dry_run_publishing"
+	recordTransition(ctx, &state, "dry_run_publishing", "starting dry-run publishing")
 	var publish string
 	if err := workflow.ExecuteActivity(ctx, "DryRunPublishActivity", input.EpisodeID).Get(ctx, &publish); err != nil {
-		state.State = "blocked"
+		recordTransition(ctx, &state, "blocked", "dry-run publish failed")
 		state.Notes = append(state.Notes, "dry-run publish failed")
 		return EpisodeWorkflowResult{EpisodeID: input.EpisodeID, State: state.State, Notes: state.Notes}, err
 	}
 	state.Notes = append(state.Notes, publish)
-	state.State = "dry_run_complete"
+	recordTransition(ctx, &state, "dry_run_complete", "workflow completed dry-run")
 
 	return EpisodeWorkflowResult{
 		EpisodeID: input.EpisodeID,
 		State:     state.State,
 		Notes:     state.Notes,
 	}, nil
+}
+
+func recordTransition(ctx workflow.Context, state *EpisodeWorkflowState, next string, reason string) {
+	from := state.State
+	state.State = next
+	eventID := fmt.Sprintf("workflow-transition-%03d", len(state.AuditEvents)+1)
+	state.AuditEvents = append(state.AuditEvents, audit.NewStateTransition(
+		eventID,
+		"workflow:episode_lifecycle",
+		state.EpisodeID,
+		from,
+		next,
+		state.EpisodeID,
+		reason,
+		workflow.Now(ctx),
+	))
 }

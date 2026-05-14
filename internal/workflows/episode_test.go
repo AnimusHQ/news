@@ -39,6 +39,22 @@ func TestEpisodeLifecycleWorkflowCompletesDryRun(t *testing.T) {
 	if result.State != "dry_run_complete" {
 		t.Fatalf("expected dry_run_complete, got %s", result.State)
 	}
+
+	value, err := env.QueryWorkflow(GetEpisodeStateQueryName)
+	if err != nil {
+		t.Fatalf("query workflow state: %v", err)
+	}
+	var state EpisodeWorkflowState
+	if err := value.Get(&state); err != nil {
+		t.Fatalf("decode workflow state: %v", err)
+	}
+	if len(state.AuditEvents) == 0 {
+		t.Fatal("expected workflow transition audit events")
+	}
+	last := state.AuditEvents[len(state.AuditEvents)-1]
+	if last.Decision != "dry_run_complete" {
+		t.Fatalf("expected final audit transition to dry_run_complete, got %+v", last)
+	}
 }
 
 func TestEpisodeLifecycleWorkflowBlocksOnHumanQARejection(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/AnimusHQ/news/internal/analytics"
 	"github.com/AnimusHQ/news/internal/artifacts"
 	claimextractor "github.com/AnimusHQ/news/internal/claims"
 	"github.com/AnimusHQ/news/internal/council"
@@ -40,13 +41,25 @@ type DryRunReport struct {
 	StoryboardSceneCount  int
 	RenderStatus          string
 	RenderOutputPath      string
+	GeneratedOutputPaths  []string
 	ProductionQAStatus    string
 	ProductionQADecision  string
+	ProductionQABlockers  []string
 	PublishVisibility     artifacts.PublishVisibility
 	PublishDraftID        string
+	AnalyticsWindow       string
+	AnalyticsInsightCount int
 	WorkflowReached       []string
 	Warnings              []string
 	Blockers              []string
+}
+
+// DryRunOptions controls local fixture-only dry-run behavior.
+type DryRunOptions struct {
+	// UseApprovedFixtures consumes the canonical claims artifact and a local
+	// approving council fixture. It is intended for integration tests that need
+	// to exercise downstream generation without changing the real pilot gates.
+	UseApprovedFixtures bool
 }
 
 func (r DryRunReport) String() string {
@@ -82,15 +95,31 @@ func (r DryRunReport) String() string {
 			fmt.Fprintf(&b, "render_output_path: %s\n", r.RenderOutputPath)
 		}
 	}
+	if len(r.GeneratedOutputPaths) > 0 {
+		fmt.Fprintf(&b, "generated_output_paths:\n")
+		for _, output := range r.GeneratedOutputPaths {
+			fmt.Fprintf(&b, "  - %s\n", output)
+		}
+	}
 	if r.ProductionQAStatus != "" {
 		fmt.Fprintf(&b, "production_qa_status: %s\n", r.ProductionQAStatus)
 		if r.ProductionQADecision != "" {
 			fmt.Fprintf(&b, "production_qa_decision: %s\n", r.ProductionQADecision)
 		}
+		if len(r.ProductionQABlockers) > 0 {
+			fmt.Fprintf(&b, "production_qa_blockers:\n")
+			for _, blocker := range r.ProductionQABlockers {
+				fmt.Fprintf(&b, "  - %s\n", blocker)
+			}
+		}
 	}
 	if r.PublishDraftID != "" {
 		fmt.Fprintf(&b, "publish_visibility: %s\n", r.PublishVisibility)
 		fmt.Fprintf(&b, "publish_draft_id: %s\n", r.PublishDraftID)
+	}
+	if r.AnalyticsWindow != "" {
+		fmt.Fprintf(&b, "analytics_window: %s\n", r.AnalyticsWindow)
+		fmt.Fprintf(&b, "analytics_insight_count: %d\n", r.AnalyticsInsightCount)
 	}
 	fmt.Fprintf(&b, "workflow_reached: %s\n", strings.Join(r.WorkflowReached, " -> "))
 	if len(r.ValidationIssues) > 0 {
@@ -120,6 +149,11 @@ func (r DryRunReport) String() string {
 
 // DryRun executes the local no-network MVP pipeline skeleton.
 func DryRun(episodeDir string) (DryRunReport, error) {
+	return DryRunWithOptions(episodeDir, DryRunOptions{})
+}
+
+// DryRunWithOptions executes the local no-network MVP pipeline skeleton.
+func DryRunWithOptions(episodeDir string, options DryRunOptions) (DryRunReport, error) {
 	report := DryRunReport{
 		EpisodeDir: episodeDir,
 		WorkflowReached: []string{
@@ -135,8 +169,11 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 			"production_qa_gate_checked",
 			"generate_publish_pack",
 			"dry_run_publish_private_draft",
+			"import_fixture_analytics",
+			"generate_analytics_insights",
 			"human_qa_required",
 			"public_publish_blocked_by_design",
+			"final_summary",
 		},
 		Warnings: []string{
 			"no external model providers are called; council uses deterministic local mock providers",
@@ -159,13 +196,22 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		return report, err
 	}
 
-	claimExtraction, err := claimextractor.ExtractEpisode(episodeDir)
+	claimsFile, err := claimsForDryRun(episodeDir, options)
 	if err != nil {
-		report.Blockers = append(report.Blockers, fmt.Sprintf("claim extraction failed: %v", err))
+		report.Blockers = append(report.Blockers, fmt.Sprintf("claim preparation failed: %v", err))
 		return report, err
 	}
-	report.GeneratedClaimCount = len(claimExtraction.ClaimsFile.Claims)
-	report.Warnings = append(report.Warnings, claimExtraction.Warnings...)
+	report.GeneratedClaimCount = len(claimsFile.Claims)
+	if options.UseApprovedFixtures {
+		report.Warnings = append(report.Warnings, "approved fixture mode consumes local claims and council fixtures for downstream dry-run coverage")
+	} else {
+		claimExtraction, err := claimextractor.ExtractEpisode(episodeDir)
+		if err != nil {
+			report.Blockers = append(report.Blockers, fmt.Sprintf("claim extraction failed: %v", err))
+			return report, err
+		}
+		report.Warnings = append(report.Warnings, claimExtraction.Warnings...)
+	}
 
 	researchAudit, err := research.AuditPack(research.Pack{
 		CoreQuestion:             researchFile.CoreQuestion,
@@ -173,7 +219,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		LearningObjectives:       researchFile.LearningObjectives,
 		ForbiddenSimplifications: researchFile.ForbiddenSimplifications,
 		VisualOpportunities:      researchFile.VisualOpportunities,
-	}, claimExtraction.ClaimsFile.Claims)
+	}, claimsFile.Claims)
 	if err != nil {
 		report.Blockers = append(report.Blockers, fmt.Sprintf("research audit failed: %v", err))
 		return report, err
@@ -186,7 +232,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		return report, fmt.Errorf("research audit failed")
 	}
 
-	councilResult, err := RunLocalMockCouncil(context.Background(), DefaultModelRegistryPath)
+	councilResult, err := councilForDryRun(context.Background(), options)
 	if err != nil {
 		report.Blockers = append(report.Blockers, fmt.Sprintf("local multimodel council failed: %v", err))
 		return report, err
@@ -203,7 +249,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		return report, fmt.Errorf("local council blocked the artifact")
 	}
 
-	verificationReport, err := verification.VerifyClaims(claimExtraction.ClaimsFile.Claims, councilResult.Report)
+	verificationReport, err := verification.VerifyClaims(claimsFile.Claims, councilResult.Report)
 	if err != nil {
 		report.Blockers = append(report.Blockers, fmt.Sprintf("claim verification failed: %v", err))
 		return report, err
@@ -220,7 +266,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		EpisodeFormat:     "short educational explainer",
 		ScriptPath:        filepath.Join(episodeDir, "script.md"),
 		ResearchSummary:   researchSummary(researchFile),
-		Claims:            claimExtraction.ClaimsFile.Claims,
+		Claims:            claimsFile.Claims,
 		Verification:      verificationReport,
 		Council:           councilResult.Report,
 		QualityGateStatus: "dry_run",
@@ -242,6 +288,15 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 
 	var storyboardFile storyboard.File
 	if canGenerateStoryboard(qaPacket.RecommendedDecision) {
+		if options.UseApprovedFixtures {
+			transition := artifacts.ValidateTransition(episodeDir, artifacts.StateStoryboarding)
+			if !transition.Valid {
+				for _, issue := range transition.Issues {
+					report.Blockers = append(report.Blockers, issue.Artifact+": "+issue.Reason)
+				}
+				return report, fmt.Errorf("approved fixture is missing human QA approval for storyboarding")
+			}
+		}
 		script, err := os.ReadFile(filepath.Join(episodeDir, "script.md"))
 		if err != nil {
 			report.Blockers = append(report.Blockers, fmt.Sprintf("script loading for storyboard failed: %v", err))
@@ -251,7 +306,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 			EpisodeID:             researchFile.EpisodeID,
 			ScriptMarkdown:        string(script),
 			HumanQARecommendation: qaPacket.RecommendedDecision,
-			Claims:                claimExtraction.ClaimsFile.Claims,
+			Claims:                claimsFile.Claims,
 		})
 		if err != nil {
 			report.Blockers = append(report.Blockers, fmt.Sprintf("storyboard generation failed: %v", err))
@@ -266,7 +321,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 
 	var renderResult render.Result
 	if report.StoryboardStatus == "generated" {
-		renderResult, err := render.GeneratePreview(render.Input{
+		renderResult, err = render.GeneratePreview(render.Input{
 			EpisodeID:  researchFile.EpisodeID,
 			Storyboard: storyboardFile,
 			OutputDir:  "dist",
@@ -277,6 +332,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		}
 		report.RenderStatus = "preview_generated"
 		report.RenderOutputPath = renderResult.Preview.Path
+		report.GeneratedOutputPaths = append(report.GeneratedOutputPaths, renderResult.Preview.Path)
 	} else {
 		report.RenderStatus = "skipped_by_storyboard_gate"
 		report.Warnings = append(report.Warnings, "render preview generation skipped because storyboard was not generated")
@@ -286,7 +342,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		productionQAReport, err := productionqa.Run(productionqa.Input{
 			EpisodeID:             researchFile.EpisodeID,
 			Render:                renderResult,
-			Claims:                claimExtraction.ClaimsFile.Claims,
+			Claims:                claimsFile.Claims,
 			Verification:          verificationReport,
 			HumanQARecommendation: qaPacket.RecommendedDecision,
 			PublishVisibility:     artifacts.PublishVisibilityPrivate,
@@ -297,6 +353,7 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 		}
 		report.ProductionQAStatus = "checked"
 		report.ProductionQADecision = productionQAReport.Decision
+		report.ProductionQABlockers = append([]string{}, productionQAReport.BlockingIssues...)
 		if productionQAReport.Decision != productionqa.DecisionApproved {
 			report.Warnings = append(report.Warnings, "production QA did not approve release")
 		}
@@ -326,6 +383,15 @@ func DryRun(episodeDir string) (DryRunReport, error) {
 	}
 	report.PublishVisibility = publishResult.Visibility
 	report.PublishDraftID = publishResult.DraftID
+	report.GeneratedOutputPaths = append(report.GeneratedOutputPaths, "dry-run-publish:"+publishResult.DraftID)
+
+	analyticsReport, err := fixtureAnalyticsReport(context.Background(), researchFile.EpisodeID)
+	if err != nil {
+		report.Blockers = append(report.Blockers, fmt.Sprintf("analytics fixture import failed: %v", err))
+		return report, err
+	}
+	report.AnalyticsWindow = analyticsReport.Window
+	report.AnalyticsInsightCount = len(analyticsReport.Insights)
 
 	return report, nil
 }
@@ -346,4 +412,84 @@ func researchSummary(file artifacts.ResearchPackFile) string {
 
 func canGenerateStoryboard(decision artifacts.HumanDecision) bool {
 	return decision == artifacts.HumanDecisionApprove || decision == artifacts.HumanDecisionApproveWithMinorEdits
+}
+
+func claimsForDryRun(episodeDir string, options DryRunOptions) (artifacts.ClaimsFile, error) {
+	if options.UseApprovedFixtures {
+		return artifacts.LoadClaimsFile(filepath.Join(episodeDir, "claims.json"))
+	}
+	claimExtraction, err := claimextractor.ExtractEpisode(episodeDir)
+	if err != nil {
+		return artifacts.ClaimsFile{}, err
+	}
+	return claimExtraction.ClaimsFile, nil
+}
+
+func councilForDryRun(ctx context.Context, options DryRunOptions) (CouncilDryRunResult, error) {
+	if options.UseApprovedFixtures {
+		return approvedCouncilFixture(), nil
+	}
+	return RunLocalMockCouncil(ctx, DefaultModelRegistryPath)
+}
+
+func approvedCouncilFixture() CouncilDryRunResult {
+	reviews := []council.ModelReview{
+		{ModelID: "mock-technical-approval", Provider: "local-fixture", Task: "technical verification", Verdict: council.VerdictApprove, Confidence: 0.9, Notes: "Fixture claims are source-backed for downstream dry-run coverage."},
+		{ModelID: "mock-editorial-approval", Provider: "local-fixture", Task: "clarity and pedagogy", Verdict: council.VerdictApprove, Confidence: 0.86, Notes: "Fixture script is suitable for storyboard generation."},
+		{ModelID: "mock-safety-approval", Provider: "local-fixture", Task: "safety and policy", Verdict: council.VerdictApprove, Confidence: 0.88, Notes: "Private dry-run posture is safe."},
+	}
+	report, err := council.Aggregate(reviews)
+	if err != nil {
+		return CouncilDryRunResult{}
+	}
+	return CouncilDryRunResult{
+		Report:   report,
+		Selected: []string{reviews[0].ModelID, reviews[1].ModelID, reviews[2].ModelID},
+	}
+}
+
+func fixtureAnalyticsReport(ctx context.Context, episodeID string) (analytics.Report, error) {
+	ctr := 0.05
+	impressions := 5000
+	views := 1200
+	averageViewDurationSeconds := 210
+	first30Retention := 0.62
+	completionRate := 0.44
+	subscribersGained := 17
+	commentsCount := 8
+	shares := 12
+	saves := 20
+	communityClicks := 48
+	costPerEpisode := 120.0
+	record := analytics.ProviderRecord{
+		Provider:  "fixture-provider",
+		EpisodeID: episodeID,
+		Window:    analytics.Window72h,
+		Metrics: analytics.ProviderMetrics{
+			CTR:                        &ctr,
+			Impressions:                &impressions,
+			Views:                      &views,
+			AverageViewDurationSeconds: &averageViewDurationSeconds,
+			First30Retention:           &first30Retention,
+			CompletionRate:             &completionRate,
+			SubscribersGained:          &subscribersGained,
+			CommentsCount:              &commentsCount,
+			Shares:                     &shares,
+			Saves:                      &saves,
+			CommunityClicks:            &communityClicks,
+			CostPerEpisode:             &costPerEpisode,
+		},
+	}
+	adapter := analytics.FixtureAdapter{Records: map[string]analytics.ProviderRecord{
+		episodeID + "|" + analytics.Window72h: record,
+	}}
+	imported, err := adapter.Import(ctx, analytics.ImportRequest{EpisodeID: episodeID, Window: analytics.Window72h})
+	if err != nil {
+		return analytics.Report{}, err
+	}
+	input, err := analytics.Normalize(imported)
+	if err != nil {
+		return analytics.Report{}, err
+	}
+	return analytics.GenerateInsightReport(input)
 }

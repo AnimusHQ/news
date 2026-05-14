@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/AnimusHQ/news/internal/models"
+	"github.com/AnimusHQ/news/internal/providers"
 )
 
 func TestRouteLowRiskSelectsSingleModel(t *testing.T) {
@@ -127,6 +128,79 @@ func TestRouteBlocksPrivacyMismatch(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected privacy mismatch to fail")
+	}
+}
+
+func TestRouteRejectsDisabledProvider(t *testing.T) {
+	r := NewWithOptions([]models.ModelRecord{
+		model("model-a", models.PrivacyTierPublic, 0.9),
+	}, Options{ProviderHealth: map[string]providers.HealthState{"test": providers.HealthDisabled}})
+
+	_, err := r.Route(models.TaskRequest{
+		Capability:  models.CapabilityTechnicalVerification,
+		RiskLevel:   models.RiskLow,
+		Modality:    models.ModalityText,
+		PrivacyTier: models.PrivacyTierPublic,
+	})
+	if err == nil {
+		t.Fatal("expected disabled provider to fail")
+	}
+}
+
+func TestRouteAllowsDegradedProviderWhenFallbackPolicyAllows(t *testing.T) {
+	r := NewWithOptions([]models.ModelRecord{
+		model("model-a", models.PrivacyTierPublic, 0.9),
+	}, Options{
+		ProviderHealth: map[string]providers.HealthState{"test": providers.HealthDegraded},
+		FallbackPolicy: providers.FallbackPolicy{AllowDegraded: true},
+	})
+
+	decision, err := r.Route(models.TaskRequest{
+		Capability:  models.CapabilityTechnicalVerification,
+		RiskLevel:   models.RiskLow,
+		Modality:    models.ModalityText,
+		PrivacyTier: models.PrivacyTierPublic,
+	})
+	if err != nil {
+		t.Fatalf("expected degraded provider fallback to be selectable: %v", err)
+	}
+	if len(decision.FallbackReasons) == 0 {
+		t.Fatal("expected fallback reason to be recorded")
+	}
+}
+
+func TestRouteRejectsUnknownProviderByDefault(t *testing.T) {
+	r := NewWithOptions([]models.ModelRecord{
+		model("model-a", models.PrivacyTierPublic, 0.9),
+	}, Options{ProviderHealth: map[string]providers.HealthState{"other": providers.HealthHealthy}})
+
+	_, err := r.Route(models.TaskRequest{
+		Capability:  models.CapabilityTechnicalVerification,
+		RiskLevel:   models.RiskLow,
+		Modality:    models.ModalityText,
+		PrivacyTier: models.PrivacyTierPublic,
+	})
+	if err == nil {
+		t.Fatal("expected unknown provider to fail closed")
+	}
+}
+
+func TestRouteStillBlocksPrivacyIncompatibleFallback(t *testing.T) {
+	r := NewWithOptions([]models.ModelRecord{
+		model("model-a", models.PrivacyTierPublic, 0.9),
+	}, Options{
+		ProviderHealth: map[string]providers.HealthState{"test": providers.HealthDegraded},
+		FallbackPolicy: providers.FallbackPolicy{AllowDegraded: true},
+	})
+
+	_, err := r.Route(models.TaskRequest{
+		Capability:  models.CapabilityTechnicalVerification,
+		RiskLevel:   models.RiskHigh,
+		Modality:    models.ModalityText,
+		PrivacyTier: models.PrivacyTierRestricted,
+	})
+	if err == nil {
+		t.Fatal("expected privacy-incompatible fallback to fail")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/AnimusHQ/news/internal/productionqa"
 	"github.com/AnimusHQ/news/internal/qa"
 	"github.com/AnimusHQ/news/internal/render"
+	"github.com/AnimusHQ/news/internal/research"
 	"github.com/AnimusHQ/news/internal/storyboard"
 )
 
@@ -17,6 +18,33 @@ func ValidateEpisodeActivity(ctx context.Context, episodeDir string) (string, er
 		return "", err
 	}
 	return "artifact validation passed", nil
+}
+
+// ValidateTransitionActivity checks lifecycle-specific artifact dependencies.
+func ValidateTransitionActivity(ctx context.Context, episodeDir string, state artifacts.LifecycleState) (artifacts.DependencyReport, error) {
+	report := artifacts.ValidateTransition(episodeDir, state)
+	if !report.Valid {
+		return report, artifacts.ValidateReport(artifacts.ValidationReport{
+			EpisodeDir: episodeDir,
+			Valid:      false,
+			Issues:     dependencyIssuesToValidation(report.Issues),
+		})
+	}
+	return report, nil
+}
+
+// BuildResearchPackActivity builds a deterministic draft research pack from
+// explicitly supplied source records and snippets.
+func BuildResearchPackActivity(ctx context.Context, input research.BuilderInput) (research.BuildResult, error) {
+	return research.BuildPack(input)
+}
+
+func dependencyIssuesToValidation(issues []artifacts.DependencyIssue) []artifacts.ValidationIssue {
+	out := make([]artifacts.ValidationIssue, 0, len(issues))
+	for _, issue := range issues {
+		out = append(out, artifacts.ValidationIssue{File: issue.Artifact, Message: issue.Reason})
+	}
+	return out
 }
 
 // MockCouncilActivity is a safe placeholder for the future multimodel council.

@@ -7,16 +7,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 // ArtifactEnvelope captures fields common to all JSON/YAML artifacts.
 type ArtifactEnvelope struct {
-	SchemaVersion string `json:"schema_version" yaml:"schema_version"`
-	EpisodeID     string `json:"episode_id" yaml:"episode_id"`
-	ArtifactID    string `json:"artifact_id" yaml:"artifact_id"`
-	Status        string `json:"status" yaml:"status"`
+	SchemaVersion   string   `json:"schema_version" yaml:"schema_version"`
+	EpisodeID       string   `json:"episode_id" yaml:"episode_id"`
+	ArtifactID      string   `json:"artifact_id" yaml:"artifact_id"`
+	CreatedAt       string   `json:"created_at,omitempty" yaml:"created_at,omitempty"`
+	CreatedBy       string   `json:"created_by,omitempty" yaml:"created_by,omitempty"`
+	SourceArtifacts []string `json:"source_artifacts,omitempty" yaml:"source_artifacts,omitempty"`
+	ContentHash     string   `json:"content_hash,omitempty" yaml:"content_hash,omitempty"`
+	Status          string   `json:"status" yaml:"status"`
 }
 
 // ValidationIssue is a machine-readable artifact validation finding.
@@ -73,12 +78,9 @@ func ValidateEpisodeDirectoryStrict(dir string) ValidationReport {
 				continue
 			}
 			validateEnvelope(&report, name, envelope)
+			validateArtifactSchema(&report, name, path)
 		}
 	}
-
-	validatePublishManifestSafety(&report, filepath.Join(dir, "publish_manifest.json"))
-	validateHumanQAExplicit(&report, filepath.Join(dir, "human_qa_report.json"))
-	validateClaimsCoverage(&report, filepath.Join(dir, "claims.json"))
 
 	return report
 }
@@ -105,6 +107,8 @@ func decodeArtifact(path string, out any) error {
 func validateEnvelope(report *ValidationReport, file string, envelope ArtifactEnvelope) {
 	if envelope.SchemaVersion == "" {
 		report.add(file, "schema_version", "schema_version is required")
+	} else if envelope.SchemaVersion != "1.0" {
+		report.add(file, "schema_version", "unsupported schema_version: "+envelope.SchemaVersion)
 	}
 	if envelope.EpisodeID == "" {
 		report.add(file, "episode_id", "episode_id is required")
@@ -114,6 +118,21 @@ func validateEnvelope(report *ValidationReport, file string, envelope ArtifactEn
 	}
 	if envelope.Status == "" {
 		report.add(file, "status", "status is required")
+	} else if !validArtifactStatus(envelope.Status) {
+		report.add(file, "status", "unsupported artifact status: "+envelope.Status)
+	}
+	if envelope.CreatedAt != "" {
+		if _, err := time.Parse(time.RFC3339, envelope.CreatedAt); err != nil {
+			report.add(file, "created_at", "created_at must be RFC3339 when present")
+		}
+	}
+	for i, source := range envelope.SourceArtifacts {
+		if strings.TrimSpace(source) == "" {
+			report.add(file, fmt.Sprintf("source_artifacts[%d]", i), "source artifact reference must not be empty")
+		}
+	}
+	if envelope.ContentHash != "" && !strings.HasPrefix(envelope.ContentHash, "sha256:") {
+		report.add(file, "content_hash", "content_hash must use sha256: prefix when present")
 	}
 }
 

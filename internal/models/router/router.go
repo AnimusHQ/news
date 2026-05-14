@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/AnimusHQ/news/internal/models"
+	"github.com/AnimusHQ/news/internal/providers"
 )
 
 // Options controls model selection policy.
@@ -13,7 +14,9 @@ type Options struct {
 	// AllowDegraded permits degraded models to be selected when healthy active
 	// models are unavailable or lower ranked. It should be false for strict
 	// production gates unless an explicit fallback policy allows degradation.
-	AllowDegraded bool
+	AllowDegraded  bool
+	ProviderHealth map[string]providers.HealthState
+	FallbackPolicy providers.FallbackPolicy
 }
 
 // Router selects models for a task without calling any provider.
@@ -43,7 +46,17 @@ func (r Router) Route(req models.TaskRequest) (models.RoutingDecision, error) {
 
 	var candidates []models.ModelRecord
 	var rejected []models.RejectedModel
+	var fallbackReasons []string
 	for _, model := range r.registry {
+		health := providerHealth(model.Provider, r.options.ProviderHealth)
+		healthDecision := providers.Evaluate(model.Provider, health, fallbackPolicy(r.options))
+		if !healthDecision.Allowed {
+			rejected = append(rejected, models.RejectedModel{ModelID: model.ID, Reason: healthDecision.Reason})
+			continue
+		}
+		if health != "" && health != providers.HealthHealthy {
+			fallbackReasons = append(fallbackReasons, healthDecision.Reason)
+		}
 		if model.Status == models.ModelStatusDisabled {
 			rejected = append(rejected, models.RejectedModel{ModelID: model.ID, Reason: "model disabled"})
 			continue
@@ -87,10 +100,30 @@ func (r Router) Route(req models.TaskRequest) (models.RoutingDecision, error) {
 	}
 
 	return models.RoutingDecision{
-		Selected: append([]models.ModelRecord(nil), candidates[:count]...),
-		Rejected: rejected,
-		Policy:   policy,
+		Selected:        append([]models.ModelRecord(nil), candidates[:count]...),
+		Rejected:        rejected,
+		Policy:          policy,
+		FallbackReasons: fallbackReasons,
 	}, nil
+}
+
+func providerHealth(provider string, health map[string]providers.HealthState) providers.HealthState {
+	if len(health) == 0 {
+		return providers.HealthHealthy
+	}
+	state, ok := health[provider]
+	if !ok {
+		return providers.HealthUnknown
+	}
+	return state
+}
+
+func fallbackPolicy(options Options) providers.FallbackPolicy {
+	policy := options.FallbackPolicy
+	if options.AllowDegraded {
+		policy.AllowDegraded = true
+	}
+	return policy
 }
 
 func hasCapability(capabilities []models.Capability, target models.Capability) bool {
