@@ -41,6 +41,38 @@ func TestProviderRequiresCredentialReference(t *testing.T) {
 	}
 }
 
+func TestProviderRequiresCredentialReferencePrefix(t *testing.T) {
+	client := &recordingClient{}
+	cfg := validConfig()
+	cfg.CredentialRef = "ANIMUS_SANDBOX_PROVIDER_TOKEN"
+	_, err := Provider{Config: cfg, Client: client}.Run(context.Background(), request(models.PrivacyTierPublic))
+	if err == nil {
+		t.Fatal("expected unprefixed credential ref to fail")
+	}
+	if !strings.Contains(err.Error(), "env:, secretref:, or file:") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if client.calls != 0 {
+		t.Fatalf("client should not be called, got %d calls", client.calls)
+	}
+}
+
+func TestProviderRejectsSecretLikeCredentialReference(t *testing.T) {
+	client := &recordingClient{}
+	cfg := validConfig()
+	cfg.CredentialRef = "token=" + strings.Repeat("a", 16) + "1234567890"
+	_, err := Provider{Config: cfg, Client: client}.Run(context.Background(), request(models.PrivacyTierPublic))
+	if err == nil {
+		t.Fatal("expected secret-like credential ref to fail")
+	}
+	if !strings.Contains(err.Error(), "credential value") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if client.calls != 0 {
+		t.Fatalf("client should not be called, got %d calls", client.calls)
+	}
+}
+
 func TestProviderBlocksRestrictedDataBeforeClientCall(t *testing.T) {
 	client := &recordingClient{}
 	cfg := validConfig()
@@ -122,7 +154,7 @@ func validConfig() Config {
 		ProviderID:          "sandbox-provider",
 		ModelID:             "sandbox-reviewer",
 		Endpoint:            "https://sandbox.example.test/review",
-		CredentialRef:       "ANIMUS_SANDBOX_PROVIDER_TOKEN",
+		CredentialRef:       "env:ANIMUS_SANDBOX_PROVIDER_TOKEN",
 		Enabled:             true,
 		AllowedPrivacyTiers: []models.PrivacyTier{models.PrivacyTierPublic, models.PrivacyTierInternalApproved},
 	}

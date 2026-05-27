@@ -51,6 +51,8 @@ It is not ready for public launch. Public launch remains blocked by placeholder 
 | ACC-030 | Complete | Local persistence and content-addressed artifact store interfaces exist with filesystem implementation, canonical artifact validation before storage, immutable episode artifact refs, idempotent writes, state records, and path traversal protections. |
 | ACC-031 | Complete | Sandbox model provider and private/scheduled platform publishing adapters exist behind provider-agnostic interfaces, fail closed without explicit enablement/credential references, block unsafe privacy tiers and secret-like prompts before client execution, normalize model output, and refuse public uploads. |
 | ACC-032 | Complete | Typed storage backend configuration and deterministic Postgres migration plan exist for future Postgres/S3-compatible storage, requiring credential references instead of values and rejecting raw secret-like config. |
+| ACC-033 | Complete | Standard-library sandbox HTTP model client exists behind the sandbox provider client interface, sends normalized JSON, rejects unsafe endpoint schemes, non-2xx responses, and malformed JSON, avoids authorization credentials, and hardens credential references to `env:`, `secretref:`, or `file:` labels. |
+| ACC-034 | Complete | Repository-local architecture conformance tests scan production workflow code for forbidden side-effect imports and direct nondeterministic time calls, and scan adapter packages for workflow dependency leaks. |
 
 ## Current Release Checks
 
@@ -70,7 +72,7 @@ go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 
 - Pilot `claims.json` still uses placeholder evidence ranges and `needs_human_review` statuses.
 - `verification_report.json`, `multimodel_approval_report.json`, and `human_qa_report.json` intentionally request revision.
-- Real network model/provider adapters are not configured; sandbox adapter boundaries now exist and fail closed without credential references.
+- Real provider-specific model adapters are not configured; provider-neutral sandbox HTTP client boundaries now exist and fail closed without credential references.
 - Rendering, analytics import, and insight generation now have deterministic local packages, but they still require real approved inputs before public launch.
 - Local persistence and object storage interfaces plus migration/config plans exist, but real Postgres/S3-compatible clients and applied migrations are not implemented.
 - No real private/scheduled platform adapter is configured; local sandbox publishing adapter exists and refuses public visibility.
@@ -79,6 +81,6 @@ go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 
 Implement the next post-taskpack production-readiness slice:
 
-1. add real HTTP/client implementations behind the sandbox model provider client interface.
+1. add provider-specific sandbox endpoint contracts and credential-resolution deployment wiring outside repository content.
 2. add real Postgres/S3-compatible clients behind the storage interfaces.
-3. keep local mock/dry-run paths as the default CI-safe path.
+3. extend architecture checks for publish visibility, artifact hash provenance, and analytics advisory-only boundaries.

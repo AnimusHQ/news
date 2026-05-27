@@ -115,8 +115,8 @@ func (p Provider) validateConfig() error {
 	if !p.Config.Enabled {
 		return adapters.ErrProviderUnavailable{ProviderID: providerID(p.Config), Reason: "sandbox provider is disabled"}
 	}
-	if strings.TrimSpace(p.Config.CredentialRef) == "" {
-		return adapters.ErrProviderUnavailable{ProviderID: providerID(p.Config), Reason: "credential reference is required"}
+	if err := validateCredentialRef(p.Config.CredentialRef); err != nil {
+		return adapters.ErrProviderUnavailable{ProviderID: providerID(p.Config), Reason: err.Error()}
 	}
 	if strings.TrimSpace(p.Config.Endpoint) == "" {
 		return adapters.ErrProviderUnavailable{ProviderID: providerID(p.Config), Reason: "sandbox endpoint is required"}
@@ -174,6 +174,20 @@ func privacyAllowed(tier models.PrivacyTier, allowed []models.PrivacyTier) bool 
 		}
 	}
 	return false
+}
+
+func validateCredentialRef(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("credential reference is required")
+	}
+	if security.Redact(value) != value {
+		return fmt.Errorf("credential reference must not contain a credential value")
+	}
+	if strings.HasPrefix(value, "env:") || strings.HasPrefix(value, "secretref:") || strings.HasPrefix(value, "file:") {
+		return nil
+	}
+	return fmt.Errorf("credential reference must use env:, secretref:, or file: prefix")
 }
 
 func providerID(config Config) string {
