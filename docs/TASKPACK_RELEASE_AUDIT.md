@@ -48,6 +48,9 @@ It is not ready for public launch. Public launch remains blocked by placeholder 
 | ACC-027 | Complete | Local secret scanner, redaction helper, CLI, tests, and CI integration exist. |
 | ACC-028 | Complete | Required operational runbooks exist and are linked from Operations. |
 | ACC-029 | Complete | Default pilot dry-run remains safely gated by placeholder evidence, and an approved local fixture path now exercises storyboard generation, render preview, production QA approval, publish draft generation, fixture analytics import, insight generation, generated output paths, and blocked-path tests without network calls. |
+| ACC-030 | Complete | Local persistence and content-addressed artifact store interfaces exist with filesystem implementation, canonical artifact validation before storage, immutable episode artifact refs, idempotent writes, state records, and path traversal protections. |
+| ACC-031 | Complete | Sandbox model provider and private/scheduled platform publishing adapters exist behind provider-agnostic interfaces, fail closed without explicit enablement/credential references, block unsafe privacy tiers and secret-like prompts before client execution, normalize model output, and refuse public uploads. |
+| ACC-032 | Complete | Typed storage backend configuration and deterministic Postgres migration plan exist for future Postgres/S3-compatible storage, requiring credential references instead of values and rejecting raw secret-like config. |
 
 ## Current Release Checks
 
@@ -67,15 +70,15 @@ go run ./cmd/animus-news dry-run episodes/0001-after-git-push
 
 - Pilot `claims.json` still uses placeholder evidence ranges and `needs_human_review` statuses.
 - `verification_report.json`, `multimodel_approval_report.json`, and `human_qa_report.json` intentionally request revision.
-- Real model/provider adapters are not implemented.
+- Real network model/provider adapters are not configured; sandbox adapter boundaries now exist and fail closed without credential references.
 - Rendering, analytics import, and insight generation now have deterministic local packages, but they still require real approved inputs before public launch.
-- Durable Postgres/object storage and immutable evidence bundles are not implemented.
-- No real private/scheduled platform adapter is configured.
+- Local persistence and object storage interfaces plus migration/config plans exist, but real Postgres/S3-compatible clients and applied migrations are not implemented.
+- No real private/scheduled platform adapter is configured; local sandbox publishing adapter exists and refuses public visibility.
 
 ## Recommended Next Slice
 
 Implement the next post-taskpack production-readiness slice:
 
-1. introduce durable persistence and object storage behind Go interfaces.
-2. add real provider and private platform sandbox adapters behind existing interfaces.
+1. add real HTTP/client implementations behind the sandbox model provider client interface.
+2. add real Postgres/S3-compatible clients behind the storage interfaces.
 3. keep local mock/dry-run paths as the default CI-safe path.

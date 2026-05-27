@@ -38,6 +38,9 @@ The repository currently supports a local dry-run scaffold:
 - deterministic research pack builder from supplied source records and snippets;
 - lifecycle transition dependency validation with source artifact hash checks;
 - canonical episode state machine with explicit gates and block/unblock transitions;
+- local persistence and content-addressed artifact store interfaces with filesystem implementation;
+- sandbox model provider and private/scheduled publishing adapters behind provider-agnostic interfaces;
+- typed Postgres/S3-compatible backend configuration and deterministic migration plan;
 - model registry, router, mock providers, and council aggregation;
 - deterministic claim verification;
 - safe publish pack and dry-run publishing adapter;
@@ -451,10 +454,10 @@ A taskpack is complete only when:
 
 ## 8. Immediate Next Milestone
 
-The ACC-002 through ACC-029 taskpack slice is now implemented as deterministic Go packages with safe dry-run gate checks. The next milestone should move beyond the initial taskpacks:
+The ACC-002 through ACC-032 taskpack slice is now implemented as deterministic Go packages with safe dry-run gate checks. The next milestone should move beyond the initial taskpacks:
 
-1. Add durable persistence and object storage behind Go interfaces.
-2. Add real provider and private platform sandbox adapters behind existing interfaces.
+1. Add real HTTP/client implementations behind the sandbox model provider client interface.
+2. Add real Postgres/S3-compatible clients behind the storage interfaces.
 3. Keep local mock/dry-run paths as the default CI-safe path.
 
 This next milestone will move the project from local MVP demonstration toward private production readiness.
