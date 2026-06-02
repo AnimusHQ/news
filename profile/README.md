@@ -1,8 +1,8 @@
 <h1 align="center">AnimusHQ</h1>
 
 <p align="center">
-  <strong>Open-source systems for secure, observable, and reproducible device-connected infrastructure.</strong><br/>
-  Relay-first access · Control planes · Management planes · Embedded Linux validation · Reliability engineering
+  <strong>Secure access and control-plane systems for device-connected infrastructure.</strong><br/>
+  Relay-first connectivity · Service exposure · Management planes · Embedded Linux validation · Runtime observability
 </p>
 
 <p align="center">
@@ -24,133 +24,121 @@
 
 ---
 
-## Mission
+## Scope
 
-AnimusHQ builds open-source infrastructure for systems where private services, real devices, secure access paths, operational state, and production failure modes meet.
+AnimusHQ builds infrastructure components for private services, device-connected systems, and constrained networks.
 
-The organization is focused on the engineering layer between low-level connectivity and usable operations:
+The organization focuses on five engineering areas:
 
-- secure access to private services and device-connected environments;
-- relay-first connectivity across constrained networks;
-- identity-aware sessions and controlled service exposure;
-- management-plane APIs and operator workflows;
-- control-plane validation, conformance, and runtime evidence;
-- reproducible delivery, observability, and release safety.
+1. **Relay-first access** — exposing private services without assuming direct inbound connectivity.
+2. **Identity-aware sessions** — binding access to explicit identities, sessions, policies, and audit records.
+3. **Control-plane correctness** — validating state transitions, command semantics, protocol behavior, and runtime effects.
+4. **Management-plane operations** — APIs, inventories, health views, configuration surfaces, and operator workflows.
+5. **Release safety** — reproducible builds, CI gates, conformance checks, logs, metrics, traces, and validation artifacts.
 
-The goal is not to create another ad-hoc tunneling tool. The goal is to build understandable infrastructure that can be inspected, validated, operated, and evolved.
-
----
-
-## Core direction
-
-### Secure device and service access
-
-AnimusHQ explores relay-first service exposure for environments where direct connectivity is unreliable, unsafe, or operationally expensive.
-
-Key concerns:
-
-- private service exposure without broad network access;
-- identity-aware sessions instead of anonymous tunnels;
-- explicit service registration and authorization boundaries;
-- relay participation without treating the relay as the owner of payload semantics;
-- auditability and operator visibility as first-class design requirements.
-
-### Control-plane and management-plane systems
-
-The organization separates infrastructure into two layers:
-
-- **Control plane**: core behavior, state transitions, command/session semantics, validation, conformance, and runtime rules.
-- **Management plane**: APIs, service/device inventory, health, audit logs, operator workflows, configuration, and operational policy.
-
-This separation keeps low-level correctness independent from operator-facing workflows while still making the system manageable in production.
-
-### Reproducible operations
-
-AnimusHQ treats logs, metrics, traces, audit records, validation reports, and release artifacts as part of the product surface.
-
-A system is not considered production-ready only because it runs. It must also be diagnosable, reproducible, observable, and safe to change.
+AnimusHQ does not publish production-security claims until a project has a documented threat model, security policy, supported configuration, release process, and vulnerability handling path.
 
 ---
 
-## Projects
+## Project status
 
-### [Animus Link](https://github.com/AnimusHQ/link)
+| Project | Purpose | Public status |
+|---|---|---|
+| [Animus Link](https://github.com/AnimusHQ/link) | Relay-first secure access substrate for private services and device-connected infrastructure. | Active prototype / architecture implementation. Not security-certified. |
+| [Animus Link UX](https://github.com/AnimusHQ/link_ux) | Operator interface for exposed services, sessions, health, access state, and configuration. | Early interface layer. Not a supported admin console yet. |
+| [Animus News](https://github.com/AnimusHQ/news) | Source-grounded technical media and documentation workflow system. | Secondary project. Not part of the secure-access runtime path. |
 
-Relay-first secure access substrate for private services and device-connected infrastructure.
+---
 
-Primary engineering themes:
+## Architecture model
 
-- identity, session, relay, and service-exposure boundaries;
-- secure transport and controlled connectivity;
-- private discovery and explicit authorization paths;
-- conformance-oriented protocol behavior;
-- reproducible runtime validation.
+AnimusHQ projects use a two-layer operating model.
 
-### [Animus Link UX](https://github.com/AnimusHQ/link_ux)
+### Control plane
 
-Operator-facing user experience for managing secure access paths, exposed services, session state, and system visibility.
+The control plane owns runtime semantics:
 
-Primary engineering themes:
+- identity and session state;
+- command validation;
+- service exposure rules;
+- relay and transport behavior;
+- conformance checks;
+- runtime evidence.
+
+### Management plane
+
+The management plane owns operator workflows:
 
 - service and device inventory;
-- session and access visualization;
-- health/status surfaces;
-- operator workflows;
-- configuration and auditability.
+- configuration APIs;
+- health and status views;
+- audit logs;
+- access/session visibility;
+- release and operational diagnostics.
 
-### [Animus News](https://github.com/AnimusHQ/news)
-
-Source-grounded technical media and knowledge system for documenting engineering practice, open-source systems, and infrastructure concepts.
-
-This project is secondary to the infrastructure direction. It exists to support trustworthy technical communication, not to dilute the core engineering focus.
+This separation prevents UI/API workflows from becoming the source of truth for low-level behavior.
 
 ---
 
-## Engineering principles
+## Non-goals
 
-- Runtime behavior matters more than repository aesthetics.
-- Security boundaries should be explicit enough to test and boring enough to operate.
-- Control planes should own truth; execution environments should report evidence.
-- Management planes should make state visible, inspectable, and auditable.
-- Logs, metrics, traces, and audit records are design surfaces.
-- Reproducibility is a debugging and accountability mechanism, not a tooling preference.
+AnimusHQ is not currently positioning its projects as:
+
+- a drop-in VPN replacement;
+- a production-certified zero-trust platform;
+- a managed cloud service;
+- a security product with formal assurance claims;
+- a generic tunneling utility;
+- a content or media company.
+
+The current public work is an engineering foundation for secure device-connected infrastructure. Production claims require release discipline, security review, supported deployments, and documented operations.
+
+---
+
+## Engineering standards
+
+All production-facing AnimusHQ repositories should define:
+
+- project scope, status, and non-goals;
+- supported local development path;
+- license and contribution rules;
+- security policy and vulnerability reporting path;
+- architecture notes or ADRs;
+- formatting, linting, tests, and CI gates;
+- threat model when security boundaries are involved;
+- observability surfaces for runtime systems;
+- release process, changelog, and versioning once users depend on the project.
+
+A repository that does not meet this baseline must describe itself as an early-stage prototype, research implementation, or engineering proof.
+
+---
+
+## Operating principles
+
+- Runtime behavior is part of the API.
+- Security boundaries must be testable.
+- Control planes own truth; management planes expose and operate it.
+- Logs, metrics, traces, audit records, and validation reports are product surfaces.
+- Reproducibility is required for debugging, accountability, and release safety.
 - Parser support is not feature support; runtime effect and readback matter.
-- Production systems need rollback, observability, state ownership, and defined failure semantics.
-
----
-
-## Production-grade bar
-
-AnimusHQ projects should move toward the following baseline before being presented as production-ready:
-
-- clear README with scope, status, non-goals, and threat model where relevant;
-- explicit license and contribution policy;
-- reproducible local development path;
-- automated formatting, linting, tests, and security checks;
-- CI release gates and artifact validation;
-- documented architecture decisions;
-- observability and operational runbooks;
-- issue templates, pull request templates, and security reporting path;
-- versioned releases and changelog once external users depend on the project.
-
-Until a project meets this bar, it should be described as an early-stage prototype, research implementation, or engineering proof rather than as a production-certified system.
+- Production readiness requires rollback, observability, ownership of state, and documented failure semantics.
 
 ---
 
 ## Collaboration
 
-AnimusHQ is currently most relevant for teams working on:
+AnimusHQ is relevant to teams working on:
 
-- secure access to private devices, labs, internal services, or edge infrastructure;
-- Go management planes around devices, sessions, services, operators, and audit trails;
+- secure access to private services, internal tools, labs, edge systems, or device fleets;
+- Go management planes for devices, sessions, services, operators, and audit trails;
 - Rust control-plane components for network or industrial appliances;
 - embedded Linux validation and release-safety workflows;
-- reliability-critical backend systems connected to real-world infrastructure.
+- reliability-critical backend systems connected to physical or private infrastructure.
 
-For collaboration, architecture review, or technical discussion: [rewanderer@proton.me](mailto:rewanderer@proton.me)
+Contact: [rewanderer@proton.me](mailto:rewanderer@proton.me)
 
 ---
 
 <p align="center">
-  <sub>AnimusHQ builds infrastructure that stays accessible, observable, reproducible, and operationally understandable after the first implementation has shipped.</sub>
+  <sub>AnimusHQ builds infrastructure that remains accessible, observable, reproducible, and operationally understandable after the first implementation ships.</sub>
 </p>
