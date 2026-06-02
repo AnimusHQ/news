@@ -1,83 +1,67 @@
-# Contributing to Animus News
+# Contributing to AnimusHQ
 
-Thank you for considering a contribution.
+AnimusHQ accepts contributions that improve correctness, security posture, operability, documentation quality, test coverage, or release safety.
 
-Animus News is a source-grounded educational media system. Contributions should improve trust, clarity, correctness, safety, or production quality.
+Repositories may define project-specific contribution rules. If a repository has its own `CONTRIBUTING.md`, follow that file first.
 
-## Contribution principles
+## Before contributing
 
-1. Preserve technical accuracy.
-2. Prefer primary sources.
-3. Keep artifacts typed and auditable.
-4. Do not introduce provider lock-in.
-5. Do not bypass quality gates.
-6. Do not add unsafe content workflows.
-7. Respect open-source culture and newcomers.
+Before opening a pull request:
 
-## What to contribute
+1. Read the repository README.
+2. Check project status and non-goals.
+3. Check open issues and existing pull requests.
+4. Avoid changing security-sensitive behavior without a design note or issue discussion.
+5. Do not include secrets, private keys, tokens, customer data, internal logs, or confidential material.
+
+## Accepted contribution areas
 
 Useful contributions include:
 
-- documentation improvements;
-- schema definitions;
-- source ranking logic;
-- model adapter interfaces;
-- verification workflows;
-- rendering templates;
-- diagram templates;
-- QA checks;
-- analytics reports;
-- security hardening;
-- accessibility improvements.
+- tests and reproducible failure cases;
+- documentation corrections;
+- CI, linting, formatting, and release-safety improvements;
+- architecture notes and threat-model clarifications;
+- observability and diagnostics improvements;
+- bug fixes with clear reproduction steps;
+- examples that use safe test data and local-only configuration.
 
-## Documentation standards
+## Security-sensitive changes
 
-Documentation should be:
+Changes involving identity, sessions, authorization, relay behavior, cryptography, transport security, secret handling, audit logs, or service exposure require extra care.
 
-- explicit;
-- structured;
-- technically precise;
-- diagrammed when helpful;
-- clear about trade-offs;
-- honest about risks;
-- aligned with the existing system blueprint.
+For these changes, include:
 
-## Model-related contributions
+- what behavior changes;
+- what threat or failure mode is affected;
+- how the change is tested;
+- what remains unsupported;
+- any migration or compatibility impact.
 
-When adding model support, include:
-
-- provider name;
-- model identifier;
-- supported modalities;
-- ideal task categories;
-- known limitations;
-- cost/latency notes;
-- privacy considerations;
-- benchmark evidence where available.
-
-No model should be treated as universal authority.
+Do not submit public proof-of-concept exploits for unresolved vulnerabilities. Report vulnerabilities through `SECURITY.md`.
 
 ## Pull request checklist
 
 Before submitting:
 
-- [ ] Documentation is updated.
-- [ ] Security implications are considered.
-- [ ] Quality gates are not bypassed.
-- [ ] New artifacts have schemas or schema updates.
-- [ ] Mermaid diagrams render correctly if added.
-- [ ] Provider-specific logic is isolated behind adapters.
-- [ ] No secrets or private data are included.
-- [ ] Claims are source-grounded where applicable.
+- [ ] The change has a clear scope.
+- [ ] Tests or validation steps are included.
+- [ ] Documentation is updated when behavior changes.
+- [ ] Security implications are stated when relevant.
+- [ ] No secrets, tokens, private data, or internal logs are included.
+- [ ] The change does not expand project claims beyond documented status.
+- [ ] New runtime behavior is observable or diagnosable where practical.
 
 ## Review expectations
 
-Reviewers should check:
+Maintainers review for:
 
 - correctness;
 - maintainability;
-- source grounding;
-- safety;
-- provider independence;
-- compatibility with the roadmap;
-- alignment with editorial standards.
+- security impact;
+- compatibility with repository scope;
+- operational clarity;
+- testability;
+- documentation quality.
+
+A pull request may be declined if it expands scope, weakens security boundaries, introduces unclear behavior, removes validation, or creates unsupported production claims.
