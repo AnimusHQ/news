@@ -1,36 +1,67 @@
-# Security Policy
+# Security policy
+
+AnimusHQ projects may include components related to secure access, service exposure, identity, sessions, relays, transport, control planes, and management planes.
+
+Do not treat any AnimusHQ project as production-certified security software unless that repository explicitly documents a supported release, deployment model, threat model, and security review status.
 
 ## Reporting a vulnerability
 
-If you discover a security issue in Animus News, please report it privately rather than opening a public issue.
+Report security issues privately by email:
 
-Recommended report contents:
+```text
+rewanderer@proton.me
+```
 
-- affected component;
-- impact;
-- reproduction steps;
-- affected branch/commit;
-- suggested mitigation if available.
+Do not open public GitHub issues for vulnerabilities, exploit paths, authentication bypasses, cryptographic weaknesses, secret exposure, or deployment configurations that could put users at risk.
 
-## Security scope
+Include:
 
-Security-sensitive areas include:
+- affected repository and commit or release;
+- description of the issue;
+- reproduction steps or proof of concept when safe to share;
+- expected impact;
+- affected configuration;
+- any logs or traces that do not contain secrets.
 
-- model provider integrations;
-- publishing credentials;
-- source ingestion;
-- prompt injection handling;
-- artifact storage;
-- rendering workers;
-- CI/CD;
-- secret management;
-- generated media disclosure;
-- private or sensitive data handling.
+## Response expectations
 
-## Non-public data
+AnimusHQ is currently a small open-source organization. Response time is best-effort, not guaranteed by SLA.
 
-Do not include secrets, tokens, private keys, private user data, or sensitive internal material in issues, pull requests, examples, prompts, logs, generated assets, or rendered content.
+Expected handling process:
 
-## Disclosure posture
+1. Acknowledge the report when received.
+2. Reproduce or assess the issue.
+3. Classify impact and affected scope.
+4. Prepare a fix, mitigation, or public advisory when applicable.
+5. Credit the reporter if they request credit and the report is valid.
 
-The project should prefer coordinated disclosure and fast mitigation. Public details should be shared only after risk is contained.
+## Supported versions
+
+Unless a repository states otherwise, public repositories are early-stage implementations and do not have a supported-version matrix.
+
+A project becomes supported only when its repository defines:
+
+- release artifacts;
+- versioning policy;
+- changelog;
+- supported deployment model;
+- security review status;
+- vulnerability handling process.
+
+## Security boundaries
+
+Security-sensitive repositories should document:
+
+- trust assumptions;
+- authentication and authorization model;
+- identity and session model;
+- relay and transport responsibilities;
+- secret handling;
+- logging and audit behavior;
+- non-goals and unsupported configurations.
+
+## Safe handling rules
+
+Do not include secrets, private keys, access tokens, customer data, production logs, or internal infrastructure details in public issues or pull requests.
+
+Use test keys, isolated environments, and minimal reproduction cases whenever possible.
