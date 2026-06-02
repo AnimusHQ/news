@@ -1,197 +1,178 @@
-# Animus News
+<h1 align="center">Grewanderer</h1>
 
-**Animus News** is a source-grounded, production-grade media system for creating high-quality educational IT content around the Animus open-source community.
+<p align="center">
+  <strong>Go/Rust Platform Engineer for secure device-connected infrastructure</strong><br/>
+  Control planes · Management planes · Secure service exposure · Embedded Linux · Reliability · Observability
+</p>
 
-The project is not intended to become a low-quality AI video generator. Its purpose is to become a rigorous **content compiler**: a system that transforms trusted sources, community knowledge, engineering practice, and editorial standards into reliable educational media.
+<p align="center">
+  <a href="mailto:rewanderer@proton.me">Email</a>
+  ·
+  <a href="https://kapakka.org">Website</a>
+  ·
+  <a href="https://github.com/grewanderer/animus-link">Animus Link</a>
+  ·
+  <a href="https://github.com/grewanderer/animus_link_manager">Animus Link Manager</a>
+  ·
+  <a href="https://github.com/grewanderer/animus-amity">Amity</a>
+  ·
+  <a href="https://github.com/AnimusHQ">AnimusHQ</a>
+</p>
 
-## Mission
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-management%20plane-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Go management plane" />
+  <img src="https://img.shields.io/badge/Rust-control%20plane-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust control plane" />
+  <img src="https://img.shields.io/badge/Linux-device%20infrastructure-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux device infrastructure" />
+  <img src="https://img.shields.io/badge/Kubernetes-platform-326CE5?style=flat-square&logo=kubernetes&logoColor=white" alt="Kubernetes platform" />
+  <img src="https://img.shields.io/badge/OpenTelemetry-observability-000000?style=flat-square&logo=opentelemetry&logoColor=white" alt="OpenTelemetry observability" />
+</p>
 
-Animus News explains how modern technology works:
+---
 
-- open-source communities and contributor journeys;
-- networking, protocols, distributed systems, and production infrastructure;
-- production engineering, CI/CD, observability, reliability, and incident response;
-- AI systems and AI-assisted engineering workflows without hype;
-- programming languages through their philosophy, strengths, limitations, and practical usage;
-- high-reputation applications, tools, platforms, and systems that shaped professional workflows.
+## What I build
 
-The goal is to build an educational media engine that is precise, trustworthy, visually clear, and valuable for both new and experienced engineers.
+I build backend, platform, and systems software for infrastructure where software has to coordinate real devices, private services, secure access paths, operational state, and production failure modes.
 
-## Core principle
+My strongest work is at the boundary between **Go management-plane services**, **Rust control-plane / systems components**, and **Linux-based device or infrastructure environments**.
 
-> AI may accelerate production, but it must not replace source-grounded engineering judgment.
+I care about systems that remain understandable after they ship: explicit state ownership, reproducible validation, observable runtime behavior, predictable failure semantics, and security boundaries that are concrete enough to test.
 
-Every episode must be traceable from source material to claims, script, storyboard, assets, QA, publication metadata, and analytics.
+---
 
-## System overview
+## Current focus
 
-```mermaid
-flowchart TD
-  A[Trusted Sources] --> B[Topic Intelligence]
-  B --> C[Research Pack]
-  C --> D[Claim Graph]
-  C --> E[Script Draft]
-  D --> F[Technical Verification]
-  E --> F
-  F --> G[Storyboard]
-  G --> H[Mascot + Visual Production]
-  H --> I[Render Pipeline]
-  I --> J[Quality Gates]
-  J --> K[Scheduled Publishing]
-  K --> L[Analytics + Community Feedback]
-  L --> B
+- **Secure device and service access**: relay-first access, private service exposure, identity-aware sessions, controlled connectivity.
+- **Control-plane engineering**: typed command models, state machines, validation, runtime effect checks, and deterministic operational behavior.
+- **Management-plane backends**: Go APIs, device and service registries, session orchestration, audit logs, health/status surfaces, operator workflows.
+- **Embedded and network-appliance validation**: Buildroot, QEMU, Linux images, CI smoke checks, release gates, firmware-oriented regression safety.
+- **Reliability and observability**: logs, metrics, traces, audit records, incident/debug paths, Prometheus, Grafana, OpenTelemetry.
+
+---
+
+## Selected systems
+
+### [Animus Link](https://github.com/grewanderer/animus-link)
+
+Rust-based secure connectivity and service-exposure substrate exploring relay-first access for private infrastructure.
+
+What it demonstrates:
+
+- separation between identity, transport, relay, session, and service-exposure boundaries;
+- relay-assisted connectivity across constrained or untrusted networks;
+- end-to-end encrypted session direction where relays are not positioned as payload owners;
+- invite-first private discovery and controlled service exposure;
+- conformance-oriented thinking around protocol behavior and runtime expectations;
+- a foundation for secure device-connected infrastructure rather than ad-hoc tunnels.
+
+Status: early-stage open-source system design and implementation work. It is a technical proof of direction, not a claim of production security certification.
+
+### [Animus Link Manager](https://github.com/grewanderer/animus_link_manager)
+
+Go-based management-plane layer around secure device/service access and operational workflows.
+
+What it is intended to cover:
+
+- service and device inventory;
+- identity/session management;
+- relay and exposure configuration;
+- health, status, and audit surfaces;
+- operator-facing workflows;
+- API-first management around lower-level connectivity primitives.
+
+This project represents the operational side of the Animus Link direction: the part that turns secure connectivity primitives into something a team can run, inspect, and manage.
+
+### [Amity](https://github.com/grewanderer/animus-amity)
+
+Document-governed AI-assisted software delivery system focused on controlled implementation, verification, and execution evidence.
+
+Relevant ideas:
+
+- explicit role separation between architecture, verification, and execution;
+- deterministic approval and bounded execution scopes;
+- typed artifacts for designs, reviews, implementation evidence, and completion records;
+- durable recovery from partial failures, worker crashes, rate limits, and incomplete execution;
+- provenance-first retrieval and evidence handling rather than blind automation.
+
+Amity is secondary to my device-infrastructure work, but it reflects the same engineering pattern: controlled state, explicit evidence, reproducible execution, and operational discipline.
+
+### Non-public industrial / network-appliance work
+
+Some of my strongest engineering work is not public. The public-safe description is:
+
+- Rust-based control-plane logic for a network appliance with strict reliability and validation requirements;
+- Go/Rust backend components for distributed industrial systems;
+- backend integration with embedded devices and platform-specific components;
+- Buildroot/QEMU-based validation paths for firmware-oriented workflows;
+- secure transport, operational diagnostics, CI/CD, and production support for infrastructure-adjacent systems.
+
+I do not publish confidential implementation details, employer code, private protocol decisions, or customer-specific architecture.
+
+---
+
+## Engineering surface
+
+| Area | What I build | Technical focus |
+|---|---|---|
+| Management planes | APIs and operational backends for devices, services, sessions, and operators | Go, REST, gRPC, PostgreSQL, audit logs, health/status, service boundaries |
+| Control planes | command/state logic, runtime behavior, validation and effect modeling | Rust, Go, state machines, typed commands, deterministic behavior, conformance checks |
+| Secure access | controlled service exposure and relay-first connectivity | identity, sessions, TLS/DTLS, secure transport, policy boundaries, private discovery |
+| Embedded Linux | Linux-based device/platform environments and validation paths | Buildroot, QEMU, rootfs composition, firmware delivery, package integration |
+| Platform engineering | delivery, deployment, CI/CD, release gates, reproducibility | Linux, Docker, Kubernetes, Helm, GitHub Actions, GitLab CI, Jenkins |
+| Reliability | systems that can be debugged under real production constraints | Prometheus, Grafana, OpenTelemetry, structured logs, metrics, traces, incident paths |
+| Integration-heavy backend | backend services around protocols, devices, and constrained environments | Go, Rust, Python, REST, gRPC, WebSockets, queues, distributed workflows |
+
+---
+
+## Technical stack
+
+```text
+Languages:        Go, Rust, Python
+Backend:          REST, gRPC, WebSockets, event-driven systems, message-driven systems
+Data:             PostgreSQL, MySQL, SQLite, Redis, Kafka, RabbitMQ, S3-compatible storage
+Platform:         Linux, Docker, Docker Compose, Kubernetes, Helm, Kustomize, Buildroot, QEMU
+Delivery:         GitHub Actions, GitLab CI, Jenkins, reproducible builds, release gates
+Observability:    Prometheus, Grafana, OpenTelemetry, structured logs, metrics, traces, ELK
+Security:         TLS, DTLS, OIDC, JWT, RBAC, ACLs, policy enforcement, secure transport
+Systems focus:    control planes, management planes, identity/session models, service exposure
 ```
 
-## Documentation map
+---
 
-Start here:
+## How I think about engineering
 
-- [System Blueprint](docs/SYSTEM_BLUEPRINT.md) — complete architecture and end-to-end design.
-- [Editorial Standard](docs/EDITORIAL_STANDARD.md) — content mission, formats, voice, mascot, and quality bar.
-- [Security and Safety](docs/SECURITY_AND_SAFETY.md) — threat model, AI safety, supply chain, secrets, platform safety, and abuse prevention.
-- [Quality Gates](docs/QUALITY_GATES.md) — acceptance criteria from topic approval to publication.
-- [Operations](docs/OPERATIONS.md) — production operations, workflows, incidents, observability, cost control, and release process.
-- [Schemas](docs/SCHEMAS.md) — canonical artifact contracts used throughout the pipeline.
-- [Architecture Decisions](docs/ARCHITECTURE_DECISIONS.md) — stable engineering decisions and trade-offs.
-- [Roadmap](docs/ROADMAP.md) — phased implementation plan from MVP to production-grade system.
-- [Contributing](CONTRIBUTING.md) — how to contribute to the project.
-- [Security Policy](SECURITY.md) — how to report security issues.
+- Runtime behavior matters more than repository aesthetics.
+- Parser support is not feature support; runtime effect and readback matter.
+- Control planes should own truth; execution environments should report evidence.
+- Production systems need rollback, observability, state ownership, and defined failure semantics.
+- Logs, metrics, traces, and audit records are design surfaces.
+- Reproducibility is a debugging and accountability mechanism, not a tooling preference.
+- Security boundaries should be explicit enough to test and boring enough to operate.
+- Good infrastructure makes failure visible before it becomes an incident.
 
-## Quick start
+---
 
-Animus News is currently a Go CLI and Temporal workflow scaffold. There is no web server to open yet. The local "start" path runs a safe, no-network dry run of the pilot episode.
+## Good fit
 
-Prerequisites:
+I am a strong fit for teams building:
 
-- Go version from `go.mod`.
-- Optional: GNU Make for shortcut commands.
-- Optional: a local Temporal service only if you want to test `worker` and workflow signaling commands.
+- secure access to private devices, internal services, labs, or edge infrastructure;
+- Go management planes around devices, sessions, services, operators, and audit trails;
+- Rust control-plane or systems components for network/industrial appliances;
+- embedded Linux release and validation pipelines;
+- reliability-critical backend systems connected to real-world infrastructure;
+- platform services where correctness, observability, and operational clarity matter.
 
-Install dependencies:
+Relevant collaboration formats:
 
-```bash
-go mod download
-```
+- fixed-scope architecture review;
+- control-plane / management-plane implementation;
+- secure device-access prototype;
+- embedded Linux validation pipeline;
+- reliability and observability audit;
+- technical due diligence for infrastructure-heavy products.
 
-Run the local release-readiness smoke check:
+---
 
-```bash
-make smoke
-```
-
-On Windows without Make:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
-```
-
-Or run the equivalent commands manually:
-
-```bash
-go test ./...
-go vet ./...
-go run ./cmd/animus-news scan-secrets .
-go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
-go run ./cmd/animus-news validate --json episodes/0001-after-git-push/research_pack.json
-go run ./cmd/animus-news extract-claims episodes/0001-after-git-push
-go run ./cmd/animus-news dry-run episodes/0001-after-git-push
-```
-
-Start the local MVP dry run:
-
-```bash
-make start
-```
-
-On Windows without Make:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start.ps1
-```
-
-Expected result: the dry run validates artifacts, audits research/source authority, extracts claims from the script, routes local mock council reviewers, verifies claims deterministically, generates a human QA decision packet, checks the storyboard/render/production-QA gates, generates a safe publish pack, and creates a private dry-run draft record. It must not call real providers or upload publicly.
-
-The pilot intentionally reports `revision_required` / `request_revision` because its evidence locators are placeholders. That is a launch blocker, not a startup failure.
-
-See [Development Plan](docs/DEVELOPMENT_PLAN.md) for the phased implementation plan and [Taskpack Release Audit](docs/TASKPACK_RELEASE_AUDIT.md) for current taskpack status and launch blockers.
-
-## CLI commands
-
-```bash
-go run ./cmd/animus-news help
-go run ./cmd/animus-news validate <path>
-go run ./cmd/animus-news validate --json <path>
-go run ./cmd/animus-news validate-episode episodes/0001-after-git-push
-go run ./cmd/animus-news extract-claims episodes/0001-after-git-push
-go run ./cmd/animus-news dry-run episodes/0001-after-git-push
-go run ./cmd/animus-news scan-secrets .
-```
-
-Temporal workflow commands require a running Temporal service:
-
-```bash
-go run ./cmd/animus-news worker
-go run ./cmd/animus-news start-workflow episode-0001 episodes/0001-after-git-push
-go run ./cmd/animus-news query-state animus-news-episode-0001
-go run ./cmd/animus-news signal-human-qa animus-news-episode-0001 approve
-go run ./cmd/animus-news signal-release animus-news-episode-0001 approve
-```
-
-## Non-goals
-
-Animus News is explicitly **not**:
-
-- a spammy AI content farm;
-- a channel for shallow news summaries;
-- a reused-content pipeline;
-- a system that publishes LLM output without verification;
-- a synthetic media system that imitates real people or misleads viewers;
-- a replacement for editorial responsibility.
-
-## Invariants
-
-1. No claim without a source.
-2. No script without a research pack.
-3. No render without technical verification.
-4. No publication without QA.
-5. No reused content without meaningful transformation.
-6. No AI output as final authority.
-7. No silent production failure.
-8. Every episode must be replayable from artifacts.
-9. Every generated asset must have provenance.
-10. Every optimization must preserve trust.
-
-## Target outputs
-
-Each approved long-form episode should produce a complete distribution pack:
-
-```mermaid
-flowchart LR
-  A[Long-form Episode] --> B[YouTube 16:9]
-  A --> C[3-7 Shorts]
-  A --> D[Transcript]
-  A --> E[Blog / Community Post]
-  A --> F[Thumbnail Candidates]
-  A --> G[Chapters]
-  A --> H[Sources List]
-  A --> I[Pinned Comment]
-  A --> J[Analytics Baseline]
-```
-
-## Preferred implementation posture
-
-The system should be built as a deterministic, auditable workflow engine around AI-assisted steps:
-
-- durable workflow orchestration;
-- typed artifacts;
-- source-grounded retrieval;
-- claim extraction and verification;
-- deterministic rendering where possible;
-- explicit approval gates;
-- immutable artifact storage;
-- full observability;
-- strict safety policies.
-
-## License
-
-License is intentionally not declared yet. Before accepting external contributions, the project should choose and add an explicit open-source license.
+<p align="center">
+  <sub>I build systems that keep private infrastructure accessible, observable, reproducible, and operationally understandable after the first implementation has shipped.</sub>
+</p>
