@@ -39,10 +39,11 @@ The repository currently supports a local dry-run scaffold:
 - lifecycle transition dependency validation with source artifact hash checks;
 - canonical episode state machine with explicit gates and block/unblock transitions;
 - local persistence and content-addressed artifact store interfaces with filesystem implementation;
+- storage runtime credential-reference resolver and backend factory;
 - sandbox model provider and private/scheduled publishing adapters behind provider-agnostic interfaces;
 - typed Postgres/S3-compatible backend configuration and deterministic migration plan;
 - standard-library sandbox HTTP model client behind the provider client interface;
-- repository-local architecture conformance tests for workflow and adapter boundaries;
+- repository-local architecture conformance tests for workflow, adapter, publishing, and analytics boundaries;
 - model registry, router, mock providers, and council aggregation;
 - deterministic claim verification;
 - safe publish pack and dry-run publishing adapter;
@@ -309,6 +310,8 @@ Deliverables:
 
 - Postgres-backed application state;
 - S3-compatible artifact storage;
+- runtime credential-reference resolution;
+- local/injected backend factory;
 - immutable evidence bundles;
 - content-addressed asset storage;
 - migration strategy;
@@ -318,6 +321,8 @@ Testing:
 
 - repository tests with isolated test database;
 - artifact hash and immutability tests;
+- credential reference redaction tests;
+- local backend factory tests;
 - retry/idempotency tests;
 - backup/restore smoke checks.
 
@@ -327,6 +332,7 @@ Architecture conformance checks:
 - revisions create new versions;
 - storage layer does not bypass validation;
 - secrets are not stored in artifacts.
+- resolved credentials are never logged or serialized.
 
 ### Phase 8 - Private Production Readiness
 
@@ -409,9 +415,8 @@ powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 ### Future Architecture Test Ideas
 
 - Extend workflow boundary checks beyond imports and direct time calls into activity registration coverage.
-- Fail if publishing code permits public visibility without human release approval.
 - Fail if generated artifacts omit source artifacts or content hashes once strict schemas are implemented.
-- Fail if analytics code mutates publish metadata automatically.
+- Fail if generated artifact refs are not linked into storage state.
 
 ## 6. Architecture Conformance Review
 
@@ -456,10 +461,10 @@ A taskpack is complete only when:
 
 ## 8. Immediate Next Milestone
 
-The ACC-002 through ACC-034 taskpack slice is now implemented as deterministic Go packages with safe dry-run gate checks. The next milestone should move beyond the initial taskpacks:
+The ACC-002 through ACC-036 taskpack slice is now implemented as deterministic Go packages with safe dry-run gate checks. The next milestone should move beyond the initial taskpacks:
 
-1. Add provider-specific sandbox endpoint contracts and deployment-side credential resolution.
-2. Add real Postgres/S3-compatible clients behind the storage interfaces.
-3. Extend architecture checks for publish visibility, artifact hash provenance, and analytics advisory-only boundaries.
+1. Add provider-specific sandbox endpoint contracts outside repository secret material.
+2. Add real Postgres/S3-compatible clients behind the storage interfaces using the runtime credential wiring.
+3. Extend architecture checks for artifact hash provenance and activity registration coverage.
 
 This next milestone will move the project from local MVP demonstration toward private production readiness.

@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/AnimusHQ/news/internal/analytics"
 )
 
 const modulePath = "github.com/AnimusHQ/news"
@@ -64,6 +66,109 @@ func TestAdaptersDoNotImportWorkflowPackages(t *testing.T) {
 	}
 }
 
+func TestPublishingCodeDoesNotExposeDirectPublicUploadPath(t *testing.T) {
+	root := repoRoot(t)
+	files := parseProductionGoFiles(t, filepath.Join(root, "internal", "publishing"))
+	for _, parsed := range files {
+		for _, decl := range parsed.file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok {
+				continue
+			}
+			name := strings.ToLower(fn.Name.Name)
+			if strings.Contains(name, "public") && containsAny(name, "upload", "publish", "schedule") {
+				t.Fatalf("%s exposes direct public publishing entrypoint %s", parsed.rel, fn.Name.Name)
+			}
+		}
+	}
+}
+
+func TestPublishingAdaptersDoNotCreatePublicResults(t *testing.T) {
+	root := repoRoot(t)
+	files := parseProductionGoFiles(t, filepath.Join(root, "internal", "publishing"))
+	for _, parsed := range files {
+		if !strings.Contains(filepath.Base(parsed.rel), "adapter") {
+			continue
+		}
+		ast.Inspect(parsed.file, func(node ast.Node) bool {
+			kv, ok := node.(*ast.KeyValueExpr)
+			if !ok {
+				return true
+			}
+			key, ok := kv.Key.(*ast.Ident)
+			if !ok || key.Name != "Visibility" {
+				return true
+			}
+			if exprIsPublishVisibilityPublic(kv.Value) {
+				t.Fatalf("%s creates adapter result/status with public visibility", parsed.rel)
+			}
+			return true
+		})
+	}
+}
+
+func TestAnalyticsCodeDoesNotImportMutationBoundaries(t *testing.T) {
+	root := repoRoot(t)
+	files := parseProductionGoFiles(t, filepath.Join(root, "internal", "analytics"))
+	for _, parsed := range files {
+		for _, imported := range parsed.imports() {
+			if imported == modulePath+"/internal/publishing" ||
+				imported == modulePath+"/internal/workflows" ||
+				imported == modulePath+"/internal/storage" {
+				t.Fatalf("%s imports %q; analytics must remain advisory and not mutate release state", parsed.rel, imported)
+			}
+		}
+	}
+}
+
+func TestAnalyticsCodeDoesNotDisableAdvisoryOnly(t *testing.T) {
+	root := repoRoot(t)
+	files := parseProductionGoFiles(t, filepath.Join(root, "internal", "analytics"))
+	for _, parsed := range files {
+		ast.Inspect(parsed.file, func(node ast.Node) bool {
+			kv, ok := node.(*ast.KeyValueExpr)
+			if !ok {
+				return true
+			}
+			key, ok := kv.Key.(*ast.Ident)
+			if !ok || key.Name != "AdvisoryOnly" {
+				return true
+			}
+			value, ok := kv.Value.(*ast.Ident)
+			if ok && value.Name == "false" {
+				t.Fatalf("%s explicitly disables analytics AdvisoryOnly", parsed.rel)
+			}
+			return true
+		})
+	}
+}
+
+func TestAnalyticsReportConstructorsRemainAdvisoryOnly(t *testing.T) {
+	input := analytics.Input{
+		Provider:  "architecture-test",
+		EpisodeID: "episode-test",
+		Window:    analytics.Window72h,
+		Metrics: analytics.Metrics{
+			CTR:              0.02,
+			Impressions:      2000,
+			Views:            400,
+			First30Retention: 0.35,
+			CompletionRate:   0.30,
+		},
+	}
+	imported := analytics.ReportFromInput(input)
+	if !imported.AdvisoryOnly {
+		t.Fatal("ReportFromInput must produce advisory-only reports")
+	}
+	insight, err := analytics.GenerateInsightReport(input)
+	if err != nil {
+		t.Fatalf("GenerateInsightReport failed: %v", err)
+	}
+	if !insight.AdvisoryOnly {
+		t.Fatal("GenerateInsightReport must produce advisory-only reports")
+	}
+}
+
 type parsedGoFile struct {
 	rel  string
 	file *ast.File
@@ -92,7 +197,7 @@ func parseProductionGoFiles(t *testing.T, dir string) []parsedGoFile {
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		parsed, err := parser.ParseFile(fset, path, nil, parser.ImportsOnly)
+		parsed, err := parser.ParseFile(fset, path, nil, 0)
 		if err != nil {
 			return err
 		}
@@ -116,6 +221,24 @@ func repoRoot(t *testing.T) string {
 		t.Fatal("resolve current file")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+}
+
+func containsAny(value string, candidates ...string) bool {
+	for _, candidate := range candidates {
+		if strings.Contains(value, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func exprIsPublishVisibilityPublic(expr ast.Expr) bool {
+	selector, ok := expr.(*ast.SelectorExpr)
+	if !ok || selector.Sel.Name != "PublishVisibilityPublic" {
+		return false
+	}
+	pkg, ok := selector.X.(*ast.Ident)
+	return ok && pkg.Name == "artifacts"
 }
 
 func forbiddenWorkflowImport(imported string) (string, bool) {
