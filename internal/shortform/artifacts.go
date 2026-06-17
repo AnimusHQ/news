@@ -13,6 +13,16 @@ import "github.com/AnimusHQ/news/internal/shortform/contenthash"
 // SchemaVersion is the envelope schema version for all short-form artifacts.
 const SchemaVersion = "1.0"
 
+// Envelope status values (mirrors internal/artifacts.ArtifactStatus).
+const (
+	StatusDraft      = "draft"
+	StatusInReview   = "in_review"
+	StatusApproved   = "approved"
+	StatusRejected   = "rejected"
+	StatusSuperseded = "superseded"
+	StatusLocked     = "locked"
+)
+
 // Artifact kinds. These also name the committed schema files
 // (internal/shortform/schemas/<kind>.schema.json).
 const (
