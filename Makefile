@@ -1,4 +1,4 @@
-.PHONY: help deps test vet fmt check scan validate validate-artifact extract-claims dry-run start smoke worker verify demo demo-blocked
+.PHONY: help deps test vet fmt fmt-check check scan validate validate-artifact extract-claims dry-run start smoke worker verify verify-m2-local demo demo-blocked
 
 BIN ?= build/animus-news
 DEMO_OUT ?= build/verify-demo
@@ -8,6 +8,7 @@ help:
 	@echo "  make deps              Download Go module dependencies"
 	@echo "  make test              Run Go tests"
 	@echo "  make vet               Run go vet"
+	@echo "  make fmt-check         Check Go formatting without modifying files"
 	@echo "  make scan              Run local secret scan"
 	@echo "  make validate          Validate the pilot episode bundle"
 	@echo "  make validate-artifact Validate one pilot artifact"
@@ -16,7 +17,8 @@ help:
 	@echo "  make start             Alias for dry-run"
 	@echo "  make smoke             Run release-readiness local checks"
 	@echo "  make worker            Start Temporal worker; requires Temporal service"
-	@echo "  make verify            M1 single-signal gate: build + vet + test + schema + e2e demo"
+	@echo "  make verify            M2 single-signal gate: fmt + build + vet + test + scan + schema + e2e demo"
+	@echo "  make verify-m2-local   Run M2 local adapter and determinism checks"
 	@echo "  make demo              Run the short-form mock demo (success path)"
 	@echo "  make demo-blocked      Run the short-form mock demo with an injected gate failure"
 
@@ -31,6 +33,10 @@ vet:
 
 fmt:
 	go fmt ./...
+
+fmt-check:
+	@test -z "$$(gofmt -l $$(find . -path ./.git -prune -o -name '*.go' -print))" || \
+		(echo "Go files need gofmt:"; gofmt -l $$(find . -path ./.git -prune -o -name '*.go' -print); exit 1)
 
 check: fmt vet test
 
@@ -56,31 +62,45 @@ smoke: test vet scan validate validate-artifact extract-claims dry-run
 worker:
 	go run ./cmd/animus-news worker
 
-# verify is the single green/red signal for M1. It builds, vets, tests, compiles
-# the CLI, runs the end-to-end mock demo (success and failure-injected variants),
-# and schema-validates every produced short-form artifact. No network, no secrets.
+# verify is the single green/red signal for M2. It checks formatting, builds,
+# vets, tests, scans for secrets, compiles the CLI, runs the end-to-end mock demo
+# (success and failure-injected variants), and schema-validates every produced
+# short-form artifact. No network, no secrets, no live provider calls.
 verify:
-	@echo "==> [1/6] go build ./..."
+	@echo "==> [1/8] gofmt check"
+	@$(MAKE) fmt-check
+	@echo "==> [2/8] go build ./..."
 	@go build ./...
-	@echo "==> [2/6] go vet ./..."
+	@echo "==> [3/8] go vet ./..."
 	@go vet ./...
-	@echo "==> [3/6] go test ./..."
+	@echo "==> [4/8] go test ./..."
 	@go test ./...
-	@echo "==> [4/6] compile CLI -> $(BIN)"
+	@echo "==> [5/8] secret scan"
+	@$(MAKE) scan
+	@echo "==> [6/8] compile CLI -> $(BIN)"
 	@go build -o $(BIN) ./cmd/animus-news
-	@echo "==> [5/6] end-to-end mock demo (success + failure-injected)"
+	@echo "==> [7/8] end-to-end mock demo (success + failure-injected)"
 	@set -e; \
 		$(BIN) demo --episode episode-0001 --out $(DEMO_OUT)/success --expect terminal; \
 		echo "---"; \
 		$(BIN) demo --episode episode-0001 --inject unapproved_storyboard --out $(DEMO_OUT)/blocked --expect blocked:storyboard_image
-	@echo "==> [6/6] schema validation of produced short-form artifacts"
+	@echo "==> [8/8] schema validation of produced short-form artifacts"
 	@set -e; for f in $(DEMO_OUT)/success/episode-0001/*_manifest.json \
 			$(DEMO_OUT)/success/episode-0001/production_candidate.json \
 			$(DEMO_OUT)/success/episode-0001/release_approval.json; do \
 		$(BIN) validate-shortform "$$f" >/dev/null; \
 	done
 	@echo ""
-	@echo "M1 VERIFY: GREEN"
+	@echo "M2 VERIFY: GREEN"
+
+verify-m2-local:
+	@echo "==> M2 local adapter contract checks"
+	@go test ./internal/shortform/providers/localexec \
+		./internal/shortform/providers/render \
+		./internal/shortform/providers/subtitles \
+		./internal/shortform/providers/uploadpost
+	@echo "==> M2 workflow determinism checks"
+	@go test ./internal/workflows -run 'TestShortFormWorkflow(ReplayIsDeterministic|DeterministicResultFixture)' -count=1
 
 demo:
 	go run ./cmd/animus-news demo --episode episode-0001 --out $(DEMO_OUT)/success --expect terminal

@@ -1,6 +1,9 @@
 package workflows
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -173,5 +176,41 @@ func TestShortFormWorkflowReplayIsDeterministic(t *testing.T) {
 	}
 	if len(res1.GateResults) != len(res2.GateResults) {
 		t.Fatalf("non-deterministic gate sequence length: %d vs %d", len(res1.GateResults), len(res2.GateResults))
+	}
+}
+
+// TestShortFormWorkflowDeterministicResultFixture pins the offline Temporal test
+// execution to a canonical result fixture. This is stronger than comparing two
+// runs because a workflow or gate sequence change must intentionally update the
+// fixture hash. Full worker.WorkflowReplayer JSON-history replay remains gated
+// until a Temporal dev-server history fixture is recorded.
+func TestShortFormWorkflowDeterministicResultFixture(t *testing.T) {
+	res, err := runWorkflow(t, activities.MockDefects{}, approveBoth)
+	if err != nil {
+		t.Fatalf("unexpected workflow error: %v", err)
+	}
+	fixture := struct {
+		State       string            `json:"state"`
+		Blocked     bool              `json:"blocked"`
+		BlockReason string            `json:"block_reason,omitempty"`
+		Artifacts   map[string]string `json:"artifacts"`
+		GateResults []gates.Result    `json:"gate_results"`
+	}{
+		State:       res.State,
+		Blocked:     res.Blocked,
+		BlockReason: res.BlockReason,
+		Artifacts:   res.Artifacts,
+		GateResults: res.GateResults,
+	}
+	data, err := json.Marshal(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(data)
+	got := "sha256:" + hex.EncodeToString(sum[:])
+	const expected = "sha256:3e65cf2cbb66e1b580460c6023f111d24b94d47a5a19f0260780984c50a5c822"
+	if got != expected {
+		pretty, _ := json.MarshalIndent(fixture, "", "  ")
+		t.Fatalf("deterministic workflow fixture hash changed: got %s want %s\n%s", got, expected, string(pretty))
 	}
 }
