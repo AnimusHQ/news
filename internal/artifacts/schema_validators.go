@@ -38,7 +38,8 @@ func validateArtifactSchema(report *ValidationReport, name string, path string) 
 
 func validArtifactStatus(status string) bool {
 	switch ArtifactStatus(strings.TrimSpace(status)) {
-	case ArtifactStatusDraft, ArtifactStatusApproved, ArtifactStatusRejected, ArtifactStatusSuperseded:
+	case ArtifactStatusDraft, ArtifactStatusInReview, ArtifactStatusApproved,
+		ArtifactStatusRejected, ArtifactStatusSuperseded, ArtifactStatusLocked:
 		return true
 	default:
 		return false

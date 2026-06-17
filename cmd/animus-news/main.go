@@ -10,6 +10,7 @@ import (
 	claimextractor "github.com/AnimusHQ/news/internal/claims"
 	"github.com/AnimusHQ/news/internal/pipeline"
 	"github.com/AnimusHQ/news/internal/security"
+	"github.com/AnimusHQ/news/internal/shortform"
 	"github.com/AnimusHQ/news/internal/temporalops"
 	"github.com/AnimusHQ/news/internal/worker"
 )
@@ -48,6 +49,19 @@ func run(args []string) error {
 			return artifacts.ValidateReport(report)
 		}
 		return nil
+	case "validate-shortform":
+		if len(args) != 3 {
+			return fmt.Errorf("usage: animus-news validate-shortform <artifact-file>")
+		}
+		issues := shortform.ValidateFile(args[2])
+		if len(issues) == 0 {
+			fmt.Printf("valid short-form artifact: %s\n", args[2])
+			return nil
+		}
+		for _, issue := range issues {
+			fmt.Fprintf(os.Stderr, "invalid: %s\n", issue)
+		}
+		return fmt.Errorf("short-form artifact validation failed: %d issue(s)", len(issues))
 	case "validate-episode":
 		if len(args) != 3 {
 			return fmt.Errorf("usage: animus-news validate-episode <episode-dir>")
@@ -163,6 +177,7 @@ func printUsage() {
 
 Usage:
   animus-news validate [--json] <path>
+  animus-news validate-shortform <artifact-file>
   animus-news validate-episode <episode-dir>
   animus-news extract-claims <episode-dir>
   animus-news dry-run <episode-dir>

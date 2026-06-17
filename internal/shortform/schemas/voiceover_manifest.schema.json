@@ -1,0 +1,41 @@
+{
+  "$id": "https://animus.local/schemas/voiceover_manifest.schema.json",
+  "title": "voiceover_manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "episode_id", "artifact_id", "created_at", "created_by", "status", "provider", "source_script_ref", "language", "output", "operator_approval"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "episode_id": { "type": "string", "minLength": 1 },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "created_by": { "type": "string", "minLength": 1 },
+    "source_artifacts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "content_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "status": { "enum": ["draft", "in_review", "approved", "rejected", "superseded", "locked"] },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "model": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "source_script_ref": { "type": "string", "minLength": 1 },
+    "language": { "type": "string", "minLength": 1 },
+    "operator_approval": { "type": "boolean" },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "hash", "duration_sec", "format"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "duration_sec": { "type": "number", "minimum": 0 },
+        "format": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

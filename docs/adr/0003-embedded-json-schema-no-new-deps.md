@@ -17,7 +17,9 @@ milestone whose ethos is "fewer, correct, tested components."
 ## Decision
 
 - Author real **JSON Schema (Draft 2020-12 subset)** documents, committed under
-  `docs/schemas/*.schema.json` and embedded into the binary via `go:embed`.
+  `internal/shortform/schemas/*.schema.json` and embedded into the binary via
+  `go:embed` (kept inside the package because `go:embed` cannot reference paths
+  above the source directory; `docs/schemas/README.md` points to them).
 - Implement a small, dependency-free schema interpreter in `internal/shortform/schema`
   that validates a decoded instance against a parsed schema. Supported keywords (the
   exact subset the artifact schemas use): `type` (object/array/string/number/integer/
