@@ -192,7 +192,7 @@ func (r *run) execute(ctx context.Context) error {
 	r.persist(voiceover)
 
 	// Subtitles.
-	subtitles, err := r.acts.GenerateSubtitles(ctx, activities.SubtitlesInput{EpisodeID: r.cfg.EpisodeID, Now: r.clock, Voiceover: voiceover, Language: "en"})
+	subtitles, err := r.acts.GenerateSubtitles(ctx, activities.SubtitlesInput{EpisodeID: r.cfg.EpisodeID, Now: r.clock, Voiceover: voiceover, Language: "en", WordTimestampsRequired: true})
 	if err != nil {
 		return r.fail("subtitles_failed", err)
 	}
@@ -257,7 +257,10 @@ func (r *run) execute(ctx context.Context) error {
 	}
 
 	// Guarded publish manifest + dry-run + release gate.
-	publish, err := r.acts.GenerateUploadPostPublishManifest(ctx, activities.PublishManifestInput{EpisodeID: r.cfg.EpisodeID, Now: r.clock, Release: release, ProductionQARef: "production_qa_report.json"})
+	publish, err := r.acts.GenerateUploadPostPublishManifest(ctx, activities.PublishManifestInput{
+		EpisodeID: r.cfg.EpisodeID, Now: r.clock, Release: release, Render: render,
+		ProductionQADecision: qa.Decision, ProductionQARef: "production_qa_report.json",
+	})
 	if err != nil {
 		return r.fail("publish_manifest_failed", err)
 	}

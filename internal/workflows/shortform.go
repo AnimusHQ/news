@@ -174,7 +174,7 @@ func ShortFormWorkflow(ctx workflow.Context, in ShortFormInput) (ShortFormResult
 
 	// Subtitles.
 	var subtitles shortform.SubtitleManifest
-	if err := workflow.ExecuteActivity(ctx, a.GenerateSubtitles, activities.SubtitlesInput{EpisodeID: in.EpisodeID, Now: now, Voiceover: &voiceover, Language: in.Language}).Get(ctx, &subtitles); err != nil {
+	if err := workflow.ExecuteActivity(ctx, a.GenerateSubtitles, activities.SubtitlesInput{EpisodeID: in.EpisodeID, Now: now, Voiceover: &voiceover, Language: in.Language, WordTimestampsRequired: true}).Get(ctx, &subtitles); err != nil {
 		return blockErr(res, "subtitles_failed", err)
 	}
 	if err := workflow.ExecuteActivity(ctx, a.ApproveSubtitles, &subtitles, now).Get(ctx, &subtitles); err != nil {
@@ -243,7 +243,10 @@ func ShortFormWorkflow(ctx workflow.Context, in ShortFormInput) (ShortFormResult
 
 	// Guarded publish manifest + dry-run + release gate.
 	var publish shortform.UploadPostPublishManifest
-	if err := workflow.ExecuteActivity(ctx, a.GenerateUploadPostPublishManifest, activities.PublishManifestInput{EpisodeID: in.EpisodeID, Now: now, Release: &release, ProductionQARef: "production_qa_report.json"}).Get(ctx, &publish); err != nil {
+	if err := workflow.ExecuteActivity(ctx, a.GenerateUploadPostPublishManifest, activities.PublishManifestInput{
+		EpisodeID: in.EpisodeID, Now: now, Release: &release, Render: &render,
+		ProductionQADecision: qa.Decision, ProductionQARef: "production_qa_report.json",
+	}).Get(ctx, &publish); err != nil {
 		return blockErr(res, "publish_manifest_failed", err)
 	}
 	stamp(&publish)

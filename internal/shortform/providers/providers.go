@@ -69,10 +69,11 @@ type VoiceoverRequest struct {
 
 // SubtitleRequest generates transcript and captions from a voiceover.
 type SubtitleRequest struct {
-	EpisodeID string
-	Now       time.Time
-	Voiceover *shortform.VoiceoverManifest
-	Language  string
+	EpisodeID              string
+	Now                    time.Time
+	Voiceover              *shortform.VoiceoverManifest
+	Language               string
+	WordTimestampsRequired bool
 }
 
 // RenderRequest composites shots + voiceover + subtitles into final renders.
@@ -87,10 +88,12 @@ type RenderRequest struct {
 
 // PublishRequest builds a guarded Upload-Post dry-run publish manifest.
 type PublishRequest struct {
-	EpisodeID       string
-	Now             time.Time
-	Release         *shortform.ReleaseApproval
-	ProductionQARef string
+	EpisodeID            string
+	Now                  time.Time
+	Release              *shortform.ReleaseApproval
+	Render               *shortform.ShortRenderManifest
+	ProductionQADecision string
+	ProductionQARef      string
 }
 
 // StoryboardImageProvider imports and records ChatGPT reference images with

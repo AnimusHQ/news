@@ -190,14 +190,18 @@ func (a *Activities) ApproveVoiceover(_ context.Context, m *shortform.VoiceoverM
 
 // SubtitlesInput generates subtitles from an approved voiceover.
 type SubtitlesInput struct {
-	EpisodeID string
-	Now       time.Time
-	Voiceover *shortform.VoiceoverManifest
-	Language  string
+	EpisodeID              string
+	Now                    time.Time
+	Voiceover              *shortform.VoiceoverManifest
+	Language               string
+	WordTimestampsRequired bool
 }
 
 func (a *Activities) GenerateSubtitles(ctx context.Context, in SubtitlesInput) (*shortform.SubtitleManifest, error) {
-	return a.Subtitle.GenerateSubtitles(ctx, providers.SubtitleRequest{EpisodeID: in.EpisodeID, Now: in.Now, Voiceover: in.Voiceover, Language: in.Language})
+	return a.Subtitle.GenerateSubtitles(ctx, providers.SubtitleRequest{
+		EpisodeID: in.EpisodeID, Now: in.Now, Voiceover: in.Voiceover,
+		Language: in.Language, WordTimestampsRequired: in.WordTimestampsRequired,
+	})
 }
 
 func (a *Activities) ValidateSubtitles(_ context.Context, m *shortform.SubtitleManifest) (ValidationResult, error) {
@@ -301,14 +305,19 @@ func (a *Activities) BuildReleaseApproval(_ context.Context, in shortform.BuildR
 
 // PublishManifestInput builds a guarded Upload-Post dry-run manifest.
 type PublishManifestInput struct {
-	EpisodeID       string
-	Now             time.Time
-	Release         *shortform.ReleaseApproval
-	ProductionQARef string
+	EpisodeID            string
+	Now                  time.Time
+	Release              *shortform.ReleaseApproval
+	Render               *shortform.ShortRenderManifest
+	ProductionQADecision string
+	ProductionQARef      string
 }
 
 func (a *Activities) GenerateUploadPostPublishManifest(ctx context.Context, in PublishManifestInput) (*shortform.UploadPostPublishManifest, error) {
-	return a.Publishing.UploadPostDryRun(ctx, providers.PublishRequest{EpisodeID: in.EpisodeID, Now: in.Now, Release: in.Release, ProductionQARef: in.ProductionQARef})
+	return a.Publishing.UploadPostDryRun(ctx, providers.PublishRequest{
+		EpisodeID: in.EpisodeID, Now: in.Now, Release: in.Release, Render: in.Render,
+		ProductionQADecision: in.ProductionQADecision, ProductionQARef: in.ProductionQARef,
+	})
 }
 
 func (a *Activities) ValidateUploadPostPublishManifest(_ context.Context, m *shortform.UploadPostPublishManifest) (ValidationResult, error) {
@@ -332,15 +341,27 @@ func (a *Activities) UploadPostDryRun(_ context.Context, m *shortform.UploadPost
 		return DryRunResult{OK: false, Detail: "publish manifest is nil"}, nil
 	}
 	if m.Mode != "dry_run" || !m.DryRun {
-		return DryRunResult{OK: false, Mode: m.Mode, Detail: "M1 only permits dry_run mode"}, nil
+		return DryRunResult{OK: false, Mode: m.Mode, Detail: "M2 only permits dry_run mode; no live upload is available"}, nil
+	}
+	if !m.HumanReleaseApproval {
+		return DryRunResult{OK: false, Mode: m.Mode, Detail: "human release approval is required before dry-run"}, nil
+	}
+	if m.ProductionQARef == "" {
+		return DryRunResult{OK: false, Mode: m.Mode, Detail: "production QA reference is required before dry-run"}, nil
+	}
+	if len(m.Platforms) == 0 || m.Visibility == "" {
+		return DryRunResult{OK: false, Mode: m.Mode, Detail: "platforms and visibility are required before dry-run"}, nil
+	}
+	if m.AIDisclosureRequired && m.AIDisclosure == "" {
+		return DryRunResult{OK: false, Mode: m.Mode, Detail: "AI disclosure is required before dry-run"}, nil
 	}
 	return DryRunResult{OK: true, Mode: "dry_run", Detail: "dry-run validated; no upload performed"}, nil
 }
 
 // UploadPostSchedulePublish is the real scheduled/public publish path; never runs
-// in M1.
+// in M2.
 func (a *Activities) UploadPostSchedulePublish(_ context.Context, _ *shortform.UploadPostPublishManifest) error {
-	return errNotEnabledInM1("UploadPostSchedulePublish")
+	return fmt.Errorf("UploadPostSchedulePublish is refused in M2; only dry-run publish manifests are allowed")
 }
 
 func errNotEnabledInM1(name string) error {
