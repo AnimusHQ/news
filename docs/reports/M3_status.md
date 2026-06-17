@@ -18,6 +18,7 @@ Commands run during implementation:
 | `go test ./internal/shortform/...` | pass | Includes DaVinci, OmniVoice, MCP, capability registry, schema updates. |
 | `go test ./internal/workflows` | pass | Includes M3 replay fixture and workflow-boundary checks. |
 | `go test ./cmd/animus-news` | pass | Includes provider capability CLI test. |
+| `git status --porcelain` | pass | Clean before and after takeover cleanup. |
 
 ## Gate results
 
@@ -28,7 +29,7 @@ Commands run during implementation:
 | M3-G3 - DaVinci Resolve MCP provider boundary safe | Implemented | `internal/shortform/providers/mcp` and `render/davinci`; disabled by default, MCP tool allowlist, dry-run client, path containment, start-render guard, draft outputs, workflow-boundary test. |
 | M3-G4 - OmniVoice provider boundary safe | Implemented | `internal/shortform/providers/voice/omnivoice`; disabled by default, missing binary/model fail closed, dry-run/fake sidecar tests, consent metadata enforcement, draft outputs. |
 | M3-G5 - provider capability registry safe | Implemented | `internal/shortform/providers/capabilities`; registry lists M3 providers and planned providers, unknown/disabled fail closed, no provider can approve or publish live. |
-| M3-G6 - takeover ready | Implemented | Final committed-state takeover commands are expected to be run before handoff: `git status --porcelain`, `make verify`, `make verify-m2-local`, `go vet ./...`, `go test ./...`, `make verify-m3`, cleanup, and clean-tree check. |
+| M3-G6 - takeover ready | Implemented | Final committed-state takeover commands passed: `git status --porcelain`, `make verify`, `make verify-m2-local`, `go vet ./...`, `go test ./...`, `make verify-m3`, cleanup, and clean-tree check. |
 
 ## Implemented
 
