@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/AnimusHQ/news/internal/activities"
+	shortformactivities "github.com/AnimusHQ/news/internal/shortform/activities"
 	"github.com/AnimusHQ/news/internal/workflows"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
@@ -54,6 +55,10 @@ func Run(ctx context.Context, cfg Config) error {
 	w.RegisterActivityWithOptions(activities.MockCouncilActivity, activity.RegisterOptions{Name: "MockCouncilActivity"})
 	w.RegisterActivityWithOptions(activities.ProductionQAActivity, activity.RegisterOptions{Name: "ProductionQAActivity"})
 	w.RegisterActivityWithOptions(activities.DryRunPublishActivity, activity.RegisterOptions{Name: "DryRunPublishActivity"})
+
+	// Short-form pipeline (M1: mock activities).
+	w.RegisterWorkflow(workflows.ShortFormWorkflow)
+	w.RegisterActivity(shortformactivities.NewMockActivities())
 
 	return w.Run(worker.InterruptCh())
 }

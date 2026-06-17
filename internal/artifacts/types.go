@@ -7,10 +7,19 @@ type ArtifactStatus string
 
 const (
 	ArtifactStatusDraft      ArtifactStatus = "draft"
+	ArtifactStatusInReview   ArtifactStatus = "in_review"
 	ArtifactStatusApproved   ArtifactStatus = "approved"
 	ArtifactStatusRejected   ArtifactStatus = "rejected"
 	ArtifactStatusSuperseded ArtifactStatus = "superseded"
+	ArtifactStatusLocked     ArtifactStatus = "locked"
 )
+
+// IsTerminalImmutable reports whether a status marks an artifact as frozen
+// against further mutation. Approved and locked artifacts must never be mutated
+// in place; a new versioned artifact must be produced instead.
+func (s ArtifactStatus) IsTerminalImmutable() bool {
+	return s == ArtifactStatusApproved || s == ArtifactStatusLocked
+}
 
 // Metadata is embedded into machine-readable artifacts.
 type Metadata struct {

@@ -1,0 +1,291 @@
+package workflows
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"testing"
+	"time"
+
+	"github.com/AnimusHQ/news/internal/shortform"
+	"github.com/AnimusHQ/news/internal/shortform/activities"
+	"github.com/AnimusHQ/news/internal/shortform/gates"
+	"github.com/AnimusHQ/news/internal/shortform/providers"
+	"go.temporal.io/sdk/testsuite"
+)
+
+var fixedStart = time.Date(2026, 6, 17, 12, 0, 0, 0, time.UTC)
+
+func sampleInput() ShortFormInput {
+	return ShortFormInput{
+		EpisodeID:            "episode-0001",
+		Scenes:               []providers.SceneSpec{{SceneID: "scene-001", StartSec: 0, EndSec: 5}, {SceneID: "scene-002", StartSec: 5, EndSec: 12}},
+		ScriptRef:            "script.md",
+		ResearchPackRef:      "research_pack.json",
+		ScriptApproved:       true,
+		Claims:               []gates.ClaimRef{{ID: "c1", SourceIDs: []string{"s1"}}},
+		Platforms:            []string{"youtube"},
+		Visibility:           "private",
+		AIDisclosureRequired: true,
+		AIDisclosure:         "AI-generated visuals and synthetic voice.",
+		Language:             "en",
+		Operator:             "operator:ci",
+	}
+}
+
+func approveBoth(env *testsuite.TestWorkflowEnvironment) {
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+	}, time.Second)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(ReleaseApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:reviewer"})
+	}, 2*time.Second)
+}
+
+func runWorkflow(t *testing.T, defects activities.MockDefects, schedule func(*testsuite.TestWorkflowEnvironment)) (ShortFormResult, error) {
+	t.Helper()
+	var ts testsuite.WorkflowTestSuite
+	env := ts.NewTestWorkflowEnvironment()
+	env.SetStartTime(fixedStart)
+	env.RegisterActivity(activities.NewMockActivitiesWithDefects(defects))
+	schedule(env)
+	env.ExecuteWorkflow(ShortFormWorkflow, sampleInput())
+	if !env.IsWorkflowCompleted() {
+		t.Fatal("workflow did not complete")
+	}
+	err := env.GetWorkflowError()
+	var res ShortFormResult
+	if err == nil {
+		if rerr := env.GetWorkflowResult(&res); rerr != nil {
+			t.Fatalf("decode result: %v", rerr)
+		}
+	}
+	return res, err
+}
+
+func TestShortFormWorkflowHappyPath(t *testing.T) {
+	res, err := runWorkflow(t, activities.MockDefects{}, approveBoth)
+	if err != nil {
+		t.Fatalf("unexpected workflow error: %v", err)
+	}
+	if res.Blocked {
+		t.Fatalf("expected success, blocked: %s", res.BlockReason)
+	}
+	if res.State != "published_dry_run_complete" {
+		t.Fatalf("unexpected terminal state: %s", res.State)
+	}
+	wantKinds := []string{
+		shortform.KindStoryboardImageManifest, shortform.KindVisualShotManifest,
+		shortform.KindVoiceoverManifest, shortform.KindSubtitleManifest,
+		shortform.KindShortRenderManifest, shortform.KindProductionCandidate,
+		shortform.KindReleaseApproval, shortform.KindUploadPostPublishManifest,
+	}
+	for _, kind := range wantKinds {
+		if res.Artifacts[kind] == "" {
+			t.Fatalf("missing stamped artifact for %s", kind)
+		}
+	}
+	for _, g := range res.GateResults {
+		if g.Blocked() {
+			t.Fatalf("gate %s unexpectedly blocked: %v", g.Gate, g.Reasons)
+		}
+	}
+	if len(res.GateResults) < 6 {
+		t.Fatalf("expected the full gate sequence, got %d gates", len(res.GateResults))
+	}
+}
+
+func TestShortFormWorkflowStoryboardRejectedBlocks(t *testing.T) {
+	res, err := runWorkflow(t, activities.MockDefects{}, func(env *testsuite.TestWorkflowEnvironment) {
+		env.RegisterDelayedCallback(func() {
+			env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "reject", Approver: "human:editor"})
+		}, time.Second)
+	})
+	if err != nil {
+		t.Fatalf("gate block must not be a workflow error: %v", err)
+	}
+	if !res.Blocked || res.State != "storyboard_rejected" {
+		t.Fatalf("expected storyboard_rejected, got state=%s blocked=%v", res.State, res.Blocked)
+	}
+}
+
+func TestShortFormWorkflowReleaseDeniedBlocks(t *testing.T) {
+	res, err := runWorkflow(t, activities.MockDefects{}, func(env *testsuite.TestWorkflowEnvironment) {
+		env.RegisterDelayedCallback(func() {
+			env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+		}, time.Second)
+		env.RegisterDelayedCallback(func() {
+			env.SignalWorkflow(ReleaseApprovalSignal, ApprovalSignal{Decision: "deny", Approver: "human:reviewer"})
+		}, 2*time.Second)
+	})
+	if err != nil {
+		t.Fatalf("release denial must not be a workflow error: %v", err)
+	}
+	if !res.Blocked || res.State != "release_denied" {
+		t.Fatalf("expected release_denied, got state=%s blocked=%v", res.State, res.Blocked)
+	}
+}
+
+func TestShortFormWorkflowRenderDefectBlocksAtRenderGate(t *testing.T) {
+	res, err := runWorkflow(t, activities.MockDefects{Render: providers.DefectRenderNoAudio}, func(env *testsuite.TestWorkflowEnvironment) {
+		env.RegisterDelayedCallback(func() {
+			env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+		}, time.Second)
+	})
+	if err != nil {
+		t.Fatalf("render gate block must not be a workflow error: %v", err)
+	}
+	if !res.Blocked {
+		t.Fatal("expected workflow to block on render gate")
+	}
+	last := res.GateResults[len(res.GateResults)-1]
+	if last.Gate != "render" {
+		t.Fatalf("expected block at render gate, got %s", last.Gate)
+	}
+}
+
+func TestShortFormWorkflowProviderErrorPropagates(t *testing.T) {
+	_, err := runWorkflow(t, activities.MockDefects{Voice: providers.DefectError}, func(env *testsuite.TestWorkflowEnvironment) {
+		env.RegisterDelayedCallback(func() {
+			env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+		}, time.Second)
+	})
+	if err == nil {
+		t.Fatal("expected an injected provider error to surface as a workflow error")
+	}
+}
+
+// TestShortFormWorkflowReplayIsDeterministic runs the signal-driven workflow
+// twice with a fixed start time. The test environment replays accumulated
+// history at each workflow-task boundary (signals + activity completions), so a
+// non-deterministic workflow would error here. Byte-identical results across
+// runs reinforce determinism.
+func TestShortFormWorkflowReplayIsDeterministic(t *testing.T) {
+	res1, err1 := runWorkflow(t, activities.MockDefects{}, approveBoth)
+	res2, err2 := runWorkflow(t, activities.MockDefects{}, approveBoth)
+	if err1 != nil || err2 != nil {
+		t.Fatalf("unexpected errors: %v / %v", err1, err2)
+	}
+	if res1.State != res2.State || res1.Blocked != res2.Blocked {
+		t.Fatalf("non-deterministic terminal state: %+v vs %+v", res1, res2)
+	}
+	for kind, hash := range res1.Artifacts {
+		if res2.Artifacts[kind] != hash {
+			t.Fatalf("non-deterministic artifact hash for %s: %s vs %s", kind, hash, res2.Artifacts[kind])
+		}
+	}
+	if len(res1.GateResults) != len(res2.GateResults) {
+		t.Fatalf("non-deterministic gate sequence length: %d vs %d", len(res1.GateResults), len(res2.GateResults))
+	}
+}
+
+// TestShortFormWorkflowDeterministicResultFixture pins the offline Temporal test
+// execution to a canonical result fixture. This is stronger than comparing two
+// runs because a workflow or gate sequence change must intentionally update the
+// fixture hash. Full worker.WorkflowReplayer JSON-history replay remains gated
+// until a Temporal dev-server history fixture is recorded.
+func TestShortFormWorkflowDeterministicResultFixture(t *testing.T) {
+	res, err := runWorkflow(t, activities.MockDefects{}, approveBoth)
+	if err != nil {
+		t.Fatalf("unexpected workflow error: %v", err)
+	}
+	got := deterministicResultHash(t, res)
+	const expected = "sha256:522c6ed1123a8c2530945b45f0950aa75ae8b69d68b3a29bd6a1a6bd87dc76ef"
+	if got != expected {
+		t.Fatalf("deterministic workflow fixture hash changed: got %s want %s\n%s", got, expected, deterministicResultJSON(t, res))
+	}
+}
+
+// TestShortFormWorkflowBlockedPathFixtures pins representative blocked paths.
+// This covers deterministic replay of state transitions and gate decisions for
+// non-happy-path histories without requiring a live Temporal service.
+func TestShortFormWorkflowBlockedPathFixtures(t *testing.T) {
+	cases := []struct {
+		name     string
+		defects  activities.MockDefects
+		schedule func(*testsuite.TestWorkflowEnvironment)
+		expected string
+	}{
+		{
+			name:     "storyboard_rejected",
+			schedule: storyboardRejected,
+			expected: "sha256:20b641b2056d2a0c0855c259cd300aedcb8b9bd83bf8d05359f2f8cffec9a48d",
+		},
+		{
+			name:     "release_denied",
+			schedule: releaseDenied,
+			expected: "sha256:75da59f4e245bbbf9d923b824732a4102ae5297962937b465398d667e2748f14",
+		},
+		{
+			name:    "render_defect_blocks",
+			defects: activities.MockDefects{Render: providers.DefectRenderNoAudio},
+			schedule: func(env *testsuite.TestWorkflowEnvironment) {
+				env.RegisterDelayedCallback(func() {
+					env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+				}, time.Second)
+			},
+			expected: "sha256:3e3d3f1423a67bae339f9a1f9d0133f0edbfe0cc997e10b2694c66f55adbb65a",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := runWorkflow(t, tc.defects, tc.schedule)
+			if err != nil {
+				t.Fatalf("blocked workflow path must not be a workflow error: %v", err)
+			}
+			if !res.Blocked {
+				t.Fatalf("expected blocked result, got %s", res.State)
+			}
+			got := deterministicResultHash(t, res)
+			if got != tc.expected {
+				t.Fatalf("blocked fixture hash changed: got %s want %s\n%s", got, tc.expected, deterministicResultJSON(t, res))
+			}
+		})
+	}
+}
+
+func storyboardRejected(env *testsuite.TestWorkflowEnvironment) {
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "reject", Approver: "human:editor"})
+	}, time.Second)
+}
+
+func releaseDenied(env *testsuite.TestWorkflowEnvironment) {
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+	}, time.Second)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(ReleaseApprovalSignal, ApprovalSignal{Decision: "deny", Approver: "human:reviewer"})
+	}, 2*time.Second)
+}
+
+func deterministicResultHash(t *testing.T, res ShortFormResult) string {
+	t.Helper()
+	data := []byte(deterministicResultJSON(t, res))
+	sum := sha256.Sum256(data)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+func deterministicResultJSON(t *testing.T, res ShortFormResult) string {
+	t.Helper()
+	fixture := struct {
+		State       string            `json:"state"`
+		Blocked     bool              `json:"blocked"`
+		BlockReason string            `json:"block_reason,omitempty"`
+		Notes       []string          `json:"notes,omitempty"`
+		Artifacts   map[string]string `json:"artifacts"`
+		GateResults []gates.Result    `json:"gate_results"`
+	}{
+		State:       res.State,
+		Blocked:     res.Blocked,
+		BlockReason: res.BlockReason,
+		Notes:       res.Notes,
+		Artifacts:   res.Artifacts,
+		GateResults: res.GateResults,
+	}
+	data, err := json.Marshal(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}

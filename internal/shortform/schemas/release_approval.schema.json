@@ -1,0 +1,37 @@
+{
+  "$id": "https://animus.local/schemas/release_approval.schema.json",
+  "title": "release_approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "episode_id", "artifact_id", "created_at", "created_by", "status", "candidate_id", "platforms", "visibility", "ai_disclosure_required", "human_release_approval", "production_qa_ref", "risk_acceptance"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "episode_id": { "type": "string", "minLength": 1 },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "created_by": { "type": "string", "minLength": 1 },
+    "source_artifacts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "content_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "status": { "enum": ["draft", "in_review", "approved", "rejected", "superseded", "locked"] },
+    "candidate_id": { "type": "string", "minLength": 1 },
+    "platforms": { "type": "array", "minItems": 1, "items": { "enum": ["tiktok", "instagram", "youtube"] } },
+    "visibility": { "enum": ["private", "scheduled", "public"] },
+    "scheduled_at": { "type": "string" },
+    "ai_disclosure_required": { "type": "boolean" },
+    "ai_disclosure": { "type": "string" },
+    "human_release_approval": { "type": "boolean" },
+    "approved_by": { "type": "string" },
+    "approved_at": { "type": "string" },
+    "production_qa_ref": { "type": "string", "minLength": 1 },
+    "risk_acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ai_generated_visuals", "ai_disclosure_present", "brand_safety_checked"],
+      "properties": {
+        "ai_generated_visuals": { "type": "boolean" },
+        "ai_disclosure_present": { "type": "boolean" },
+        "brand_safety_checked": { "type": "boolean" }
+      }
+    }
+  }
+}
