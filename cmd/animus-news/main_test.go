@@ -86,6 +86,19 @@ func TestRunValidateCommandFailsInvalidArtifact(t *testing.T) {
 	}
 }
 
+func TestRunProviderCapabilitiesCommand(t *testing.T) {
+	stdout := captureStdout(t, func() {
+		if err := run([]string{"animus-news", "provider-capabilities"}); err != nil {
+			t.Fatalf("run provider-capabilities failed: %v", err)
+		}
+	})
+	for _, want := range []string{"davinci_resolve_mcp", "omnivoice", "upload_post_dry_run"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("expected %q in provider capabilities output, got %q", want, stdout)
+		}
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout
