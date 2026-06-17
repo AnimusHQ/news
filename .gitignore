@@ -9,3 +9,8 @@
 *.test
 *.out
 coverage.txt
+
+# Secrets — never commit real provider credentials. .env.example is the template.
+.env
+*.env
+!.env.example

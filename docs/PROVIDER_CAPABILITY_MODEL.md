@@ -66,6 +66,28 @@ Required invariants:
 | `local_filesystem_artifact_store` | `local_filesystem_artifact_store` | Implemented | local | true | false | false | filesystem | false | artifact files | storage only |
 | `upload_post_dry_run` | `upload_post_dry_run` | Implemented | dry_run | false | false | false | false | false | dry-run publish manifest | no live publish |
 
+## Current L2 Capabilities
+
+L2 maps real providers to their correct mode: native typed adapters where the API
+contract is verified and fake-server tested, sanctioned external-command wrappers
+where fast real execution is needed first. HTTP APIs are not wrapped in MCP.
+
+| provider_id | category | status | modes | default | network | credentials | authority |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `claude_api_review` | review/qa | Implemented | api | enabled (key-gated) | true | `ANTHROPIC_API_KEY` | review JSON only; no approval, no publish |
+| `chatterbox_tts_external` | voice | External-command only | external_command | false | local server | wrapper-owned | draft voiceover; no approval, no publish |
+| `seedance2_visual_external` | visual_video | External-command only | external_command | false | true | wrapper-owned | draft visuals; no approval, no publish |
+| `openai_image` | image | Planned | planned (L3) | false | true | `OPENAI_API_KEY` | none yet (no storyboard stage) |
+| `claude_code_mcp_operator` | operator | Planned (operator connector) | operator | false | server-dependent | operator-owned | none; not a runtime pilot provider |
+
+The native Claude review provider lives in
+`internal/shortform/providers/review/claude`; the registry is in
+`internal/shortform/providers/capabilities`. L2 evidence:
+
+```text
+make verify-l2-providers
+```
+
 ## Routing Rules
 
 Provider selection should evaluate:

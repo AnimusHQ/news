@@ -1,4 +1,4 @@
-.PHONY: help deps test vet fmt fmt-check check scan validate validate-artifact extract-claims dry-run start smoke worker verify verify-m2-local verify-m3 verify-real-pilot provider-capabilities demo demo-blocked
+.PHONY: help deps test vet fmt fmt-check check scan validate validate-artifact extract-claims dry-run start smoke worker verify verify-m2-local verify-m3 verify-real-pilot verify-l2-providers provider-capabilities demo demo-blocked
 
 BIN ?= build/animus-news
 DEMO_OUT ?= build/verify-demo
@@ -21,6 +21,7 @@ help:
 	@echo "  make verify-m2-local   Run M2 local adapter and determinism checks"
 	@echo "  make verify-m3         Run M3 provider boundary, registry, and replay checks"
 	@echo "  make verify-real-pilot Run L1 real CLI pilot fake-provider integration checks"
+	@echo "  make verify-l2-providers Run L2 provider checks (fake HTTP + fake external-command; no real calls)"
 	@echo "  make provider-capabilities Print provider capability registry JSON"
 	@echo "  make demo              Run the short-form mock demo (success path)"
 	@echo "  make demo-blocked      Run the short-form mock demo with an injected gate failure"
@@ -134,6 +135,42 @@ verify-real-pilot:
 	@grep -q "Future full production workflow" docs/WORKFLOW_FINAL.md
 	@grep -q "Review Room" docs/WORKFLOW_FINAL.md
 	@grep -q "release_candidate" docs/REAL_PILOT_V1.md
+
+# verify-l2-providers checks the L2 provider integration layer using fake HTTP
+# servers and fake external-command providers only. It never calls a real or
+# paid provider, needs no secrets, and makes no network calls.
+verify-l2-providers:
+	@echo "==> L2 native review provider tests (fake HTTP server)"
+	@go test ./internal/shortform/providers/review/claude
+	@echo "==> L2 pilot api-review + external-command tests (fake providers)"
+	@go test ./internal/shortform/pilot
+	@echo "==> L2 provider capability registry tests"
+	@go test ./internal/shortform/providers/capabilities
+	@echo "==> L2 provider docs present"
+	@set -e; for f in \
+		docs/providers/PROVIDER_RESEARCH_L2.md \
+		docs/providers/CLAUDE_API.md \
+		docs/providers/CHATTERBOX_TTS.md \
+		docs/providers/SEEDANCE2.md \
+		docs/providers/OPENAI_API.md \
+		docs/providers/CLAUDE_CODE_MCP.md \
+		docs/runbooks/first_real_pilot.md \
+		docs/runbooks/chatterbox_voice_wrapper.md \
+		docs/runbooks/seedance_visual_wrapper.md \
+		docs/PRODUCTION_DEPLOYMENT.md \
+		.env.example; do \
+		test -f "$$f" || { echo "missing $$f"; exit 1; }; \
+	done
+	@echo "==> L2 capability registry includes new providers and grants no live publish"
+	@set -e; caps="$$(go run ./cmd/animus-news provider-capabilities)"; \
+		for p in claude_api_review chatterbox_tts_external seedance2_visual_external openai_image claude_code_mcp_operator; do \
+			echo "$$caps" | grep -q "\"$$p\"" || { echo "missing capability $$p"; exit 1; }; \
+		done; \
+		if echo "$$caps" | grep -q '"can_publish": true'; then echo "a provider claims live publish"; exit 1; fi
+	@echo "==> L2 no secrets committed"
+	@$(MAKE) scan >/dev/null
+	@echo ""
+	@echo "L2 PROVIDERS VERIFY: GREEN"
 
 provider-capabilities:
 	go run ./cmd/animus-news provider-capabilities

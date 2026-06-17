@@ -47,6 +47,17 @@ does not publish publicly. See `docs/REAL_PILOT_V1.md`,
 `docs/CONNECTORS.md`, `docs/WORKFLOW_FINAL.md`, and
 `docs/reports/LAUNCH_SLICE_L1_status.md`.
 
+L2 integrates real providers in their correct mode: a **native Claude API review
+provider** (`--claude-review api`, stdlib HTTP, fake-server tested) plus
+documented **external-command wrappers** for Chatterbox (voice) and Seedance
+(visual). OpenAI is documented as a native candidate (deferred to L3); Claude
+Code MCP is an operator/developer connector only — never a runtime pilot
+provider, and HTTP APIs are never wrapped in MCP. Providers are opt-in,
+fail-closed, and grant no approval/publish authority. No live calls, spend, or
+secrets occur in the repo or CI. See `docs/providers/PROVIDER_RESEARCH_L2.md`,
+`docs/PRODUCTION_DEPLOYMENT.md`, ADRs `0012`–`0013`,
+`docs/reports/L2_PROVIDER_INTEGRATION_status.md`, and `make verify-l2-providers`.
+
 Key packages (all under `internal/shortform`):
 
 - `contenthash/` — deterministic sha256 over canonical JSON, excluding the hash field.
@@ -57,6 +68,8 @@ Key packages (all under `internal/shortform`):
 - `providers/` — 6 provider interfaces + deterministic mocks (failure injection).
 - `providers/capabilities/` — provider safety/capability registry; descriptive only,
   not a gate bypass.
+- `providers/review/claude/` — L2 native Claude API review provider (stdlib HTTP);
+  transport + strict JSON validation only, never an approval authority.
 - `providers/mcp/` — constrained DaVinci Resolve MCP tool allowlist and dry-run MCP
   client.
 - `providers/render/` — FFmpeg local render adapter, disabled by default.
@@ -110,6 +123,10 @@ go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
 go run ./cmd/animus-news pilot status --episode-dir ./episodes/animus-oss-001
 go run ./cmd/animus-news pilot validate --episode-dir ./episodes/animus-oss-001
 make verify-real-pilot
+make verify-l2-providers # L2 provider checks: fake HTTP + fake external-command, no real calls
+
+# L2: automated Claude review (fails closed without ANTHROPIC_API_KEY)
+go run ./cmd/animus-news pilot generate-real ... --claude-review api ...
 ```
 
 ## Working agreements

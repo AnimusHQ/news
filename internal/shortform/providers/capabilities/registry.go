@@ -18,6 +18,9 @@ const (
 	TypeRender          ProviderType = "render"
 	TypePublishing      ProviderType = "publishing"
 	TypeQA              ProviderType = "qa"
+	TypeReview          ProviderType = "review"
+	TypeImage           ProviderType = "image"
+	TypeOperator        ProviderType = "operator"
 )
 
 // Record describes one provider's safety posture.
@@ -46,7 +49,9 @@ type Registry struct {
 	records map[string]Record
 }
 
-// DefaultRegistry returns M3 provider capability metadata.
+// DefaultRegistry returns the M3 + L2 provider capability metadata. It is
+// descriptive: no entry may claim approval or live-publish authority (enforced
+// by Validate), regardless of whether the provider is enabled.
 func DefaultRegistry() Registry {
 	records := []Record{
 		{
@@ -102,6 +107,58 @@ func DefaultRegistry() Registry {
 			RequiresNetwork: true, RequiresPaidAPI: true, CanPublish: false,
 			SupportedArtifactTypes: []string{"uploadpost_publish_manifest"},
 			KnownLimitations:       []string{"planned only; live publish impossible in M3"},
+		},
+		// ----- L2 provider integration -----
+		{
+			Name: "claude_api_review", Type: TypeReview, ModesSupported: []string{"api"}, Enabled: true,
+			RequiresNetwork: true, RequiresPaidAPI: true, CanProduceDraftArtifacts: true,
+			SupportedArtifactTypes: []string{"claude_script_review_response", "final_review_response"},
+			KnownLimitations: []string{
+				"review/QA provider only; cannot approve artifacts or publish",
+				"requires ANTHROPIC_API_KEY; fails closed when unset",
+				"the pilot owns the gate decision and binds approved_script_hash",
+			},
+		},
+		{
+			Name: "chatterbox_tts_external", Type: TypeVoice, ModesSupported: []string{"external_command"}, Enabled: false,
+			RequiresLocalBinary: true, RequiresHumanConsent: true, CanProduceDraftArtifacts: true,
+			SupportedArtifactTypes: []string{"voiceover_manifest"},
+			KnownLimitations: []string{
+				"external-command wrapper only; not a native provider",
+				"voice cloning / reference voice requires consent metadata",
+				"disabled by default; runs via ANIMUS_VOICE_COMMAND",
+			},
+		},
+		{
+			Name: "seedance2_visual_external", Type: TypeVisualVideo, ModesSupported: []string{"external_command"}, Enabled: false,
+			RequiresNetwork: true, RequiresPaidAPI: true, CanProduceDraftArtifacts: true,
+			SupportedArtifactTypes: []string{"visual_shot_manifest"},
+			KnownLimitations: []string{
+				"external-command wrapper only; native API not implemented",
+				"async submit/poll/download owned by the operator wrapper",
+				"credentials live in the wrapper environment, never in the repo",
+				"disabled by default; runs via ANIMUS_VISUAL_COMMAND",
+			},
+		},
+		{
+			Name: "openai_image", Type: TypeImage, ModesSupported: []string{"planned"}, Enabled: false,
+			RequiresNetwork: true, RequiresPaidAPI: true, CanProduceDraftArtifacts: true,
+			SupportedArtifactTypes: []string{"storyboard_image_manifest"},
+			KnownLimitations: []string{
+				"planned native candidate; not implemented (official API docs unverifiable in this environment)",
+				"no L1 storyboard stage yet; pipeline wiring planned for L3",
+				"requires OPENAI_API_KEY",
+			},
+		},
+		{
+			Name: "claude_code_mcp_operator", Type: TypeOperator, ModesSupported: []string{"operator"}, Enabled: false,
+			RequiresMCP: true, CanProduceDraftArtifacts: false,
+			SupportedArtifactTypes: []string{},
+			KnownLimitations: []string{
+				"operator/developer connector only; not a runtime model provider for pilot generation",
+				"must not be used as a hidden review or approval authority",
+				"allowlisted MCP tools only; prompt-injection risk on external content",
+			},
 		},
 	}
 	registry := Registry{records: map[string]Record{}}

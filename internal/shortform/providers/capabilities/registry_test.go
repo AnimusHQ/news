@@ -10,8 +10,45 @@ func TestDefaultRegistryValidates(t *testing.T) {
 	if err := registry.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if len(registry.List()) < 9 {
-		t.Fatalf("expected M3 provider records, got %d", len(registry.List()))
+	if len(registry.List()) < 14 {
+		t.Fatalf("expected M3 + L2 provider records, got %d", len(registry.List()))
+	}
+}
+
+func TestL2ProvidersRegisteredWithHonestPosture(t *testing.T) {
+	registry := DefaultRegistry()
+	for _, name := range []string{"claude_api_review", "chatterbox_tts_external", "seedance2_visual_external", "openai_image", "claude_code_mcp_operator"} {
+		record, ok := registry.Get(name)
+		if !ok {
+			t.Fatalf("L2 provider %q missing from registry", name)
+		}
+		if record.CanProduceApprovedArtifacts {
+			t.Fatalf("%s must not produce approved artifacts", name)
+		}
+		if record.CanPublish {
+			t.Fatalf("%s must not publish live", name)
+		}
+	}
+
+	claude, _ := registry.Get("claude_api_review")
+	if !claude.RequiresPaidAPI || !claude.RequiresNetwork || !claude.Enabled {
+		t.Fatalf("unexpected claude_api_review posture: %+v", claude)
+	}
+	chatterbox, _ := registry.Get("chatterbox_tts_external")
+	if chatterbox.Enabled || !chatterbox.RequiresHumanConsent {
+		t.Fatalf("chatterbox must be disabled-by-default and consent-gated: %+v", chatterbox)
+	}
+	seedance, _ := registry.Get("seedance2_visual_external")
+	if seedance.Enabled || seedance.Type != TypeVisualVideo {
+		t.Fatalf("unexpected seedance posture: %+v", seedance)
+	}
+	openai, _ := registry.Get("openai_image")
+	if openai.Enabled {
+		t.Fatalf("openai_image must be planned/disabled: %+v", openai)
+	}
+	mcp, _ := registry.Get("claude_code_mcp_operator")
+	if mcp.Enabled || !mcp.RequiresMCP || mcp.CanProduceDraftArtifacts {
+		t.Fatalf("claude_code_mcp_operator must be a disabled operator-only connector: %+v", mcp)
 	}
 }
 

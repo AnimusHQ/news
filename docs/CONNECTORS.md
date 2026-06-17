@@ -202,3 +202,25 @@ The `pilot generate-real` path uses only:
 - `ffprobe_technical_validator`.
 
 It does not use live publishing connectors.
+
+## Current L2 provider integration
+
+L2 maps real providers to their correct mode and connects each to its Animus
+role. HTTP/API providers are reached by native typed adapters or sanctioned
+external-command wrappers — never wrapped in MCP to fit a pattern. See
+`docs/providers/PROVIDER_RESEARCH_L2.md`, `docs/PRODUCTION_DEPLOYMENT.md`, and the
+per-provider docs under `docs/providers/`.
+
+| connector_id | role | mode | status | docs |
+| --- | --- | --- | --- | --- |
+| `claude_api_review` | script + final QA review | native Go adapter (`--claude-review api`) | Implemented | `docs/providers/CLAUDE_API.md` |
+| `chatterbox_tts_external` | voiceover | `external_command_voice` wrapper | External-command only | `docs/providers/CHATTERBOX_TTS.md` |
+| `seedance2_visual_external` | shot video | `external_command_visual` wrapper | External-command only (native planned) | `docs/providers/SEEDANCE2.md` |
+| `openai_image` | storyboard/reference image | native (planned) | Planned (L3) | `docs/providers/OPENAI_API.md` |
+| `claude_code_mcp_operator` | operator/developer tooling | operator connector | Planned (operator only) | `docs/providers/CLAUDE_CODE_MCP.md` |
+
+Key distinction: **Claude API** (`claude_api_review`) is an automated, gated review
+provider inside the pilot; **Claude Code MCP** (`claude_code_mcp_operator`) is an
+operator/developer connector and is never a runtime provider for pilot generation
+or review. No L2 provider can approve artifacts or publish. Evidence:
+`make verify-l2-providers`.

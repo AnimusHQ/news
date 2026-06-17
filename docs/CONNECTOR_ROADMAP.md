@@ -24,21 +24,38 @@ Acceptance focus:
 - final Claude QA required before release-candidate readiness;
 - no public publishing.
 
-## L2 - First real provider wrappers
+## L2 - First real provider wrappers and native review (delivered)
 
-Recommended next milestone:
+Delivered in this milestone:
 
-- Add documented wrapper examples for one visual provider and one voice provider.
-- Keep secrets outside the repository.
-- Record provider cost/latency metadata in manifests.
-- Add fixture-based tests for provider response normalization.
-- Add manual operator runbook for first real episode.
+- Native Claude API review provider (`internal/shortform/providers/review/claude`)
+  behind `--claude-review api`, with fake-HTTP-server tests. See
+  `docs/adr/0012-claude-api-review-provider.md`.
+- Chatterbox voice path documented with a wrapper example and runbook, through the
+  existing `external_command_voice` boundary.
+- Seedance visual path documented with a wrapper example and runbook, through the
+  existing `external_command_visual` boundary (native API deferred until verified).
+- Provider capability registry updated with the L2 providers (honest statuses; no
+  approval/publish authority).
+- `.env.example`, `docs/runbooks/first_real_pilot.md`,
+  `docs/PRODUCTION_DEPLOYMENT.md`, and `make verify-l2-providers`.
+- OpenAI documented as a native candidate; implementation deferred to L3 because
+  the official API docs were not verifiable here and there is no storyboard stage
+  yet. See `docs/adr/0013-l2-provider-integration.md`.
 
-Candidate connectors:
+Principles applied:
 
-- Seedance or another visual provider through `external_command_visual`;
-- OmniVoice local sidecar or a paid TTS through `external_command_voice`;
-- faster-whisper local wrapper with documented model install path.
+- Native typed adapter where the contract is verified and fake-server tested;
+  sanctioned external-command wrapper where fast real execution is needed first.
+- HTTP/API providers are not wrapped in MCP. MCP stays reserved for DaVinci
+  Resolve finishing and Claude Code operator tooling.
+- Secrets stay outside the repository; CI requires no real secrets or calls.
+
+Remaining L2-adjacent candidates:
+
+- native Seedance adapter after the auth/job lifecycle is verified;
+- native OpenAI image provider + a storyboard stage (L3);
+- provider cost/latency metadata recorded in manifests.
 
 ## L3 - Source-grounded pilot hardening
 

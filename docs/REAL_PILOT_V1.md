@@ -248,6 +248,26 @@ Claude script approval requires `verdict=pass`,
 Claude final review requires `verdict=pass`, `can_release_candidate=true`, and
 no blocking issues, unless an explicit operator override with reason is recorded.
 
+## L2: API review and provider wrappers
+
+L2 adds an automated Claude review mode and documents real provider wrappers.
+
+- `--claude-review api` calls the native Claude API review provider during
+  `resume`: it writes `claude_script_review_response.json` and
+  `final_review_response.json` itself, then the same gates apply. It fails closed
+  without `ANTHROPIC_API_KEY` and never falls back to mocks. The model owns the
+  verdict; the pilot binds `approved_script_hash`. `--claude-review manual` (the
+  offline default) is unchanged. See `docs/providers/CLAUDE_API.md`.
+- Real voice/visual execution rides the existing external-command boundaries.
+  Documented wrappers and runbooks: Chatterbox
+  (`docs/runbooks/chatterbox_voice_wrapper.md`) and Seedance
+  (`docs/runbooks/seedance_visual_wrapper.md`), with sample wrappers under
+  `scripts/providers/`.
+- End-to-end real flow: `docs/runbooks/first_real_pilot.md`. Runtime secrets and
+  services are supplied outside this session: `docs/PRODUCTION_DEPLOYMENT.md`.
+
+Verification (no real provider calls): `make verify-l2-providers`.
+
 ## Validation
 
 ```bash
