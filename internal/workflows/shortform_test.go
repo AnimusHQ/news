@@ -189,16 +189,97 @@ func TestShortFormWorkflowDeterministicResultFixture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected workflow error: %v", err)
 	}
+	got := deterministicResultHash(t, res)
+	const expected = "sha256:522c6ed1123a8c2530945b45f0950aa75ae8b69d68b3a29bd6a1a6bd87dc76ef"
+	if got != expected {
+		t.Fatalf("deterministic workflow fixture hash changed: got %s want %s\n%s", got, expected, deterministicResultJSON(t, res))
+	}
+}
+
+// TestShortFormWorkflowBlockedPathFixtures pins representative blocked paths.
+// This covers deterministic replay of state transitions and gate decisions for
+// non-happy-path histories without requiring a live Temporal service.
+func TestShortFormWorkflowBlockedPathFixtures(t *testing.T) {
+	cases := []struct {
+		name     string
+		defects  activities.MockDefects
+		schedule func(*testsuite.TestWorkflowEnvironment)
+		expected string
+	}{
+		{
+			name:     "storyboard_rejected",
+			schedule: storyboardRejected,
+			expected: "sha256:20b641b2056d2a0c0855c259cd300aedcb8b9bd83bf8d05359f2f8cffec9a48d",
+		},
+		{
+			name:     "release_denied",
+			schedule: releaseDenied,
+			expected: "sha256:75da59f4e245bbbf9d923b824732a4102ae5297962937b465398d667e2748f14",
+		},
+		{
+			name:    "render_defect_blocks",
+			defects: activities.MockDefects{Render: providers.DefectRenderNoAudio},
+			schedule: func(env *testsuite.TestWorkflowEnvironment) {
+				env.RegisterDelayedCallback(func() {
+					env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+				}, time.Second)
+			},
+			expected: "sha256:3e3d3f1423a67bae339f9a1f9d0133f0edbfe0cc997e10b2694c66f55adbb65a",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := runWorkflow(t, tc.defects, tc.schedule)
+			if err != nil {
+				t.Fatalf("blocked workflow path must not be a workflow error: %v", err)
+			}
+			if !res.Blocked {
+				t.Fatalf("expected blocked result, got %s", res.State)
+			}
+			got := deterministicResultHash(t, res)
+			if got != tc.expected {
+				t.Fatalf("blocked fixture hash changed: got %s want %s\n%s", got, tc.expected, deterministicResultJSON(t, res))
+			}
+		})
+	}
+}
+
+func storyboardRejected(env *testsuite.TestWorkflowEnvironment) {
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "reject", Approver: "human:editor"})
+	}, time.Second)
+}
+
+func releaseDenied(env *testsuite.TestWorkflowEnvironment) {
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(StoryboardImageApprovalSignal, ApprovalSignal{Decision: "approve", Approver: "human:editor"})
+	}, time.Second)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(ReleaseApprovalSignal, ApprovalSignal{Decision: "deny", Approver: "human:reviewer"})
+	}, 2*time.Second)
+}
+
+func deterministicResultHash(t *testing.T, res ShortFormResult) string {
+	t.Helper()
+	data := []byte(deterministicResultJSON(t, res))
+	sum := sha256.Sum256(data)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+func deterministicResultJSON(t *testing.T, res ShortFormResult) string {
+	t.Helper()
 	fixture := struct {
 		State       string            `json:"state"`
 		Blocked     bool              `json:"blocked"`
 		BlockReason string            `json:"block_reason,omitempty"`
+		Notes       []string          `json:"notes,omitempty"`
 		Artifacts   map[string]string `json:"artifacts"`
 		GateResults []gates.Result    `json:"gate_results"`
 	}{
 		State:       res.State,
 		Blocked:     res.Blocked,
 		BlockReason: res.BlockReason,
+		Notes:       res.Notes,
 		Artifacts:   res.Artifacts,
 		GateResults: res.GateResults,
 	}
@@ -206,11 +287,5 @@ func TestShortFormWorkflowDeterministicResultFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sum := sha256.Sum256(data)
-	got := "sha256:" + hex.EncodeToString(sum[:])
-	const expected = "sha256:3e65cf2cbb66e1b580460c6023f111d24b94d47a5a19f0260780984c50a5c822"
-	if got != expected {
-		pretty, _ := json.MarshalIndent(fixture, "", "  ")
-		t.Fatalf("deterministic workflow fixture hash changed: got %s want %s\n%s", got, expected, string(pretty))
-	}
+	return string(data)
 }

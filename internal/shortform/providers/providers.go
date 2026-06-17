@@ -61,10 +61,17 @@ type VisualShotRequest struct {
 
 // VoiceoverRequest synthesizes voiceover from an approved script reference.
 type VoiceoverRequest struct {
-	EpisodeID string
-	Now       time.Time
-	ScriptRef string
-	Language  string
+	EpisodeID             string
+	Now                   time.Time
+	ScriptRef             string
+	Text                  string
+	Language              string
+	VoicePromptReference  string
+	VoiceConsentReference string
+	ReferenceAudioPath    string
+	ReferenceAudioHash    string
+	ReferenceAudioAllowed bool
+	VoiceConsentRequired  bool
 }
 
 // SubtitleRequest generates transcript and captions from a voiceover.
@@ -78,12 +85,13 @@ type SubtitleRequest struct {
 
 // RenderRequest composites shots + voiceover + subtitles into final renders.
 type RenderRequest struct {
-	EpisodeID string
-	Now       time.Time
-	Shots     *shortform.VisualShotManifest
-	Voiceover *shortform.VoiceoverManifest
-	Subtitles *shortform.SubtitleManifest
-	Platforms []string
+	EpisodeID   string
+	Now         time.Time
+	Shots       *shortform.VisualShotManifest
+	Voiceover   *shortform.VoiceoverManifest
+	Subtitles   *shortform.SubtitleManifest
+	Platforms   []string
+	StartRender bool
 }
 
 // PublishRequest builds a guarded Upload-Post dry-run publish manifest.

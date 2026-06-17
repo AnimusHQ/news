@@ -95,10 +95,11 @@ type RenderTarget struct {
 
 // MediaOutput is a produced media file reference with provenance.
 type MediaOutput struct {
-	Path        string  `json:"path"`
-	Hash        string  `json:"hash"`
-	DurationSec float64 `json:"duration_sec"`
-	Format      string  `json:"format"`
+	Path         string  `json:"path"`
+	Hash         string  `json:"hash"`
+	DurationSec  float64 `json:"duration_sec"`
+	Format       string  `json:"format"`
+	SampleRateHz int     `json:"sample_rate_hz,omitempty"`
 }
 
 // ----- 1. storyboard_image_manifest.json -----
@@ -166,11 +167,13 @@ func (m *VisualShotManifest) EnvelopeRef() *Envelope { return &m.Envelope }
 // output provenance.
 type VoiceoverManifest struct {
 	Envelope
-	Provider         ProviderRef `json:"provider"`
-	SourceScriptRef  string      `json:"source_script_ref"`
-	Language         string      `json:"language"`
-	Output           MediaOutput `json:"output"`
-	OperatorApproval bool        `json:"operator_approval"`
+	Provider              ProviderRef `json:"provider"`
+	SourceScriptRef       string      `json:"source_script_ref"`
+	Language              string      `json:"language"`
+	VoicePromptReference  string      `json:"voice_prompt_reference,omitempty"`
+	VoiceConsentReference string      `json:"voice_consent_reference,omitempty"`
+	Output                MediaOutput `json:"output"`
+	OperatorApproval      bool        `json:"operator_approval"`
 }
 
 func (m *VoiceoverManifest) Kind() string           { return KindVoiceoverManifest }
@@ -209,15 +212,33 @@ func (m *SubtitleManifest) EnvelopeRef() *Envelope { return &m.Envelope }
 // ShortRenderManifest records final per-platform renders.
 type ShortRenderManifest struct {
 	Envelope
-	Renderer RendererRef    `json:"renderer"`
-	Inputs   []string       `json:"inputs"`
-	Outputs  []RenderOutput `json:"outputs"`
+	Renderer         RendererRef             `json:"renderer"`
+	ProviderMetadata *RenderProviderMetadata `json:"provider_metadata,omitempty"`
+	Inputs           []string                `json:"inputs"`
+	Outputs          []RenderOutput          `json:"outputs"`
 }
 
 // RendererRef identifies the renderer and version.
 type RendererRef struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+}
+
+// RenderProviderMetadata records optional provider-specific render context.
+type RenderProviderMetadata struct {
+	Provider           string         `json:"provider"`
+	Mode               string         `json:"mode"`
+	Timeline           TimelineConfig `json:"timeline"`
+	MCPTools           []string       `json:"mcp_tools,omitempty"`
+	ProjectArchivePath string         `json:"project_archive_path,omitempty"`
+	ProjectArchiveHash string         `json:"project_archive_hash,omitempty"`
+}
+
+// TimelineConfig records deterministic render timeline settings.
+type TimelineConfig struct {
+	Resolution string `json:"resolution"`
+	Aspect     string `json:"aspect"`
+	FPS        int    `json:"fps"`
 }
 
 // RenderOutput describes one final render output for a platform.

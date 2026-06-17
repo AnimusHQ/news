@@ -25,6 +25,8 @@
     },
     "source_script_ref": { "type": "string", "minLength": 1 },
     "language": { "type": "string", "minLength": 1 },
+    "voice_prompt_reference": { "type": "string" },
+    "voice_consent_reference": { "type": "string" },
     "operator_approval": { "type": "boolean" },
     "output": {
       "type": "object",
@@ -34,7 +36,8 @@
         "path": { "type": "string", "minLength": 1 },
         "hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
         "duration_sec": { "type": "number", "minimum": 0 },
-        "format": { "type": "string", "minLength": 1 }
+        "format": { "type": "string", "minLength": 1 },
+        "sample_rate_hz": { "type": "number", "minimum": 0 }
       }
     }
   }
