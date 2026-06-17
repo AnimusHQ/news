@@ -11,12 +11,18 @@ educational IT media. It is not an AI content generator: every pipeline stage em
 typed, validated, content-hashed artifact, and every quality/release decision is a
 **code-enforced gate**, not a model instruction.
 
-## Short-form integration (Milestone M1)
+## Short-form integration (Milestones M1-M2)
 
 M1 integrates the OpenShorts execution capabilities (subtitles, FFmpeg render, 9:16
 normalization, Upload-Post publishing) as **typed, validated, gated contracts** that run
-end-to-end **on mock providers**. Real provider execution is M2/M3 (see
-`docs/adr/0005` and `docs/reports/M1_status.md`).
+end-to-end **on mock providers**.
+
+M2 adds local/dry-run execution boundaries without weakening the safety model:
+FFmpeg local render, faster-whisper sidecar contract, and Upload-Post dry-run request
+construction. These adapters are disabled by default and must be enabled explicitly in
+activity/local-runner configuration. There is still no live Seedance, ElevenLabs, real
+Upload-Post scheduling, public social upload, browser automation, or provider spend.
+See `docs/reports/M2_status.md` and ADRs `0006` through `0008`.
 
 Key packages (all under `internal/shortform`):
 
@@ -26,9 +32,15 @@ Key packages (all under `internal/shortform`):
 - root (`artifacts.go`, `validate.go`, `approve.go`) — the 8 short-form artifacts, their
   validation, and the operator/human approval + candidate-assembly transforms.
 - `providers/` — 6 provider interfaces + deterministic mocks (failure injection).
+- `providers/render/` — FFmpeg local render adapter, disabled by default.
+- `providers/subtitles/` — faster-whisper sidecar boundary, disabled by default.
+- `providers/uploadpost/` — Upload-Post dry-run adapter, disabled by default.
+- `providers/localexec/` — path containment, hashing, and redaction helpers for local
+  adapters.
 - `gates/` — the §8 content/release gates and §4 invariant gates as pure
   `func(input) Result`.
-- `activities/` — the §9 pipeline activities (mock; M2/M3 paths error out).
+- `activities/` — the §9 pipeline activities. Side effects belong here or in local
+  runners, never in workflow code.
 - `runner/` — in-process demo driver (shares activities + gates with the workflow).
 
 The durable workflow is `internal/workflows/shortform.go` (`ShortFormWorkflow`), with
@@ -51,7 +63,8 @@ in `internal/worker/worker.go`.
 ## How to run it
 
 ```bash
-make verify        # single green/red signal: build + vet + test + schema + e2e demo
+make verify        # single green/red signal: fmt + build + vet + test + scan + schema + e2e demo
+make verify-m2-local # M2 adapter contracts + workflow determinism checks
 make demo          # short-form mock demo, success path
 make demo-blocked  # short-form mock demo with an injected gate failure
 go test ./...      # all unit/integration tests (no network, no secrets)
@@ -63,8 +76,11 @@ go run ./cmd/animus-news validate-shortform <artifact>.json
 
 ## Working agreements
 
-- No real external API calls, no spend, no uploads, no secrets in the repo (M1).
+- No real external API calls, no spend, no uploads, no secrets in the repo.
+- M2 local adapters are opt-in only. Missing binary/model/configuration must fail
+  closed; default verification must remain mock/dry-run and offline.
 - Record non-trivial decisions as ADRs under `docs/adr/NNNN-*.md`; keep the work ledger
-  `docs/ledger/M1.md` current. State must be reconstructable from those files.
+  (`docs/ledger/M1.md`, `docs/ledger/M2.md`) current. State must be reconstructable
+  from those files.
 - Prefer fewer, correct, tested components. A new gate needs a positive test **and** a
   failing-input test per blocking condition.
