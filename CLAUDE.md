@@ -11,7 +11,7 @@ educational IT media. It is not an AI content generator: every pipeline stage em
 typed, validated, content-hashed artifact, and every quality/release decision is a
 **code-enforced gate**, not a model instruction.
 
-## Short-form integration (Milestones M1-M2)
+## Short-form integration (Milestones M1-M3)
 
 M1 integrates the OpenShorts execution capabilities (subtitles, FFmpeg render, 9:16
 normalization, Upload-Post publishing) as **typed, validated, gated contracts** that run
@@ -24,6 +24,12 @@ activity/local-runner configuration. There is still no live Seedance, ElevenLabs
 Upload-Post scheduling, public social upload, browser automation, or provider spend.
 See `docs/reports/M2_status.md` and ADRs `0006` through `0008`.
 
+M3 adds optional professional finishing and local voice lanes: DaVinci Resolve MCP and
+OmniVoice. Both are disabled by default, tested through dry-run/fake boundaries, and
+remain execution providers only. Animus News still owns workflow state, artifact
+validation, gates, production QA, release approval, and publish authority. See
+`docs/reports/M3_status.md` and ADRs `0009` through `0011`.
+
 Key packages (all under `internal/shortform`):
 
 - `contenthash/` — deterministic sha256 over canonical JSON, excluding the hash field.
@@ -32,9 +38,17 @@ Key packages (all under `internal/shortform`):
 - root (`artifacts.go`, `validate.go`, `approve.go`) — the 8 short-form artifacts, their
   validation, and the operator/human approval + candidate-assembly transforms.
 - `providers/` — 6 provider interfaces + deterministic mocks (failure injection).
+- `providers/capabilities/` — provider safety/capability registry; descriptive only,
+  not a gate bypass.
+- `providers/mcp/` — constrained DaVinci Resolve MCP tool allowlist and dry-run MCP
+  client.
 - `providers/render/` — FFmpeg local render adapter, disabled by default.
+- `providers/render/davinci/` — DaVinci Resolve MCP render/finishing boundary, disabled
+  by default.
 - `providers/subtitles/` — faster-whisper sidecar boundary, disabled by default.
 - `providers/uploadpost/` — Upload-Post dry-run adapter, disabled by default.
+- `providers/voice/omnivoice/` — OmniVoice local/sidecar voice boundary, disabled by
+  default and consent-gated for reference voice use.
 - `providers/localexec/` — path containment, hashing, and redaction helpers for local
   adapters.
 - `gates/` — the §8 content/release gates and §4 invariant gates as pure
@@ -65,6 +79,8 @@ in `internal/worker/worker.go`.
 ```bash
 make verify        # single green/red signal: fmt + build + vet + test + scan + schema + e2e demo
 make verify-m2-local # M2 adapter contracts + workflow determinism checks
+make verify-m3     # M3 provider boundary, registry, replay, and CLI checks
+make provider-capabilities # Print provider capability registry JSON
 make demo          # short-form mock demo, success path
 make demo-blocked  # short-form mock demo with an injected gate failure
 go test ./...      # all unit/integration tests (no network, no secrets)
@@ -79,8 +95,11 @@ go run ./cmd/animus-news validate-shortform <artifact>.json
 - No real external API calls, no spend, no uploads, no secrets in the repo.
 - M2 local adapters are opt-in only. Missing binary/model/configuration must fail
   closed; default verification must remain mock/dry-run and offline.
+- M3 provider lanes are opt-in only. DaVinci MCP may call only allowlisted tools;
+  OmniVoice reference-voice workflows require consent metadata; no provider can approve
+  artifacts or publish live.
 - Record non-trivial decisions as ADRs under `docs/adr/NNNN-*.md`; keep the work ledger
-  (`docs/ledger/M1.md`, `docs/ledger/M2.md`) current. State must be reconstructable
-  from those files.
+  (`docs/ledger/M1.md`, `docs/ledger/M2.md`, `docs/ledger/M3.md`) current. State must
+  be reconstructable from those files.
 - Prefer fewer, correct, tested components. A new gate needs a positive test **and** a
   failing-input test per blocking condition.
