@@ -18,6 +18,10 @@ import (
 
 type Runner struct {
 	Now func() time.Time
+	// ReviewClient performs Claude API reviews when --claude-review api is
+	// selected. It is nil in production (built from env on demand) and injected
+	// in tests. Never an approval authority: the pilot validates and gates.
+	ReviewClient ReviewClient
 }
 
 func (r Runner) now() time.Time {
@@ -137,6 +141,9 @@ func (r Runner) Resume(ctx context.Context, episodeDir string) (Result, error) {
 	if err := r.ensureClaudeScriptRequest(episodeDir, manifest); err != nil {
 		return Result{}, err
 	}
+	if err := r.ensureAPIScriptReview(ctx, episodeDir, manifest); err != nil {
+		return Result{}, err
+	}
 	if ok, issue, err := r.scriptReviewPassed(episodeDir, manifest); err != nil {
 		return Result{}, err
 	} else if !ok {
@@ -163,6 +170,9 @@ func (r Runner) Resume(ctx context.Context, episodeDir string) (Result, error) {
 		return Result{}, err
 	}
 	if err := r.ensureFinalReviewRequest(episodeDir, manifest); err != nil {
+		return Result{}, err
+	}
+	if err := r.ensureAPIFinalReview(ctx, episodeDir, manifest); err != nil {
 		return Result{}, err
 	}
 	if ok, issue, err := r.finalReviewPassed(episodeDir, manifest); err != nil {
@@ -854,8 +864,8 @@ func validateGenerateRequest(req GenerateRequest) error {
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required flags: %s", strings.Join(missing, ", "))
 	}
-	if req.ClaudeReview != "manual" {
-		return fmt.Errorf("unsupported --claude-review %q; L1 supports manual", req.ClaudeReview)
+	if req.ClaudeReview != "manual" && req.ClaudeReview != "api" {
+		return fmt.Errorf("unsupported --claude-review %q; supported: manual, api", req.ClaudeReview)
 	}
 	if req.RenderProvider != "ffmpeg" {
 		return fmt.Errorf("unsupported --render-provider %q; L1 supports ffmpeg", req.RenderProvider)

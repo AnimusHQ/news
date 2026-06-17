@@ -273,7 +273,7 @@ func parsePilotGenerateArgs(args []string) (pilot.GenerateRequest, error) {
 	voiceProvider := fs.String("voice-provider", "", "voice provider")
 	subtitleProvider := fs.String("subtitle-provider", "", "subtitle provider")
 	renderProvider := fs.String("render-provider", "", "render provider")
-	claudeReview := fs.String("claude-review", "", "Claude review mode")
+	claudeReview := fs.String("claude-review", "", "Claude review mode: manual or api")
 	out := fs.String("out", "", "episode output directory")
 	if err := fs.Parse(args); err != nil {
 		return pilot.GenerateRequest{}, err
@@ -430,7 +430,7 @@ Usage:
   animus-news dry-run <episode-dir>
   animus-news scan-secrets <path>
   animus-news provider-capabilities
-  animus-news pilot generate-real --episode-id <id> --prompt <text> --language <lang> --duration <seconds> --platforms <list> --visual-provider external-command --voice-provider external-command --subtitle-provider <faster-whisper|script-timing> --render-provider ffmpeg --claude-review manual --out <episode-dir>
+  animus-news pilot generate-real --episode-id <id> --prompt <text> --language <lang> --duration <seconds> --platforms <list> --visual-provider external-command --voice-provider external-command --subtitle-provider <faster-whisper|script-timing> --render-provider ffmpeg --claude-review <manual|api> --out <episode-dir>
   animus-news pilot resume --episode-dir <episode-dir>
   animus-news pilot status --episode-dir <episode-dir>
   animus-news pilot validate --episode-dir <episode-dir>

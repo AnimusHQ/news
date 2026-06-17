@@ -3,6 +3,7 @@ package pilot
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -166,6 +167,183 @@ func TestFullFakeExternalPilotProducesReleaseCandidateAfterFinalClaudeReview(t *
 
 func testRunner() Runner {
 	return Runner{Now: func() time.Time { return fixedNow }}
+}
+
+// TestExternalVisualPathTraversalRejected proves the visual external-command
+// path (used by the Seedance wrapper) refuses an output that escapes the
+// episode root, so an untrusted provider cannot write or reference files
+// outside the workspace.
+func TestExternalVisualPathTraversalRejected(t *testing.T) {
+	episodeDir := t.TempDir()
+	requests := VisualShotRequests{
+		SchemaVersion: SchemaVersion,
+		EpisodeID:     "animus-test-001",
+		Shots:         []VisualShotRequest{{ShotID: "shot-001"}},
+	}
+	response := ExternalVisualResponse{
+		SchemaVersion: SchemaVersion,
+		EpisodeID:     "animus-test-001",
+		Provider:      "seedance-wrapper",
+		Shots: []ExternalVisualOutput{{
+			ShotID:     "shot-001",
+			Status:     "generated",
+			OutputPath: "../../../etc/passwd",
+			Width:      1080, Height: 1920, FPS: 30,
+		}},
+	}
+	if _, _, err := normalizeVisualResponse(episodeDir, requests, response); err == nil || !strings.Contains(err.Error(), "escapes configured root") {
+		t.Fatalf("expected path-traversal rejection, got %v", err)
+	}
+}
+
+// fakeReviewClient is an injected ReviewClient that returns canned JSON without
+// any network call, exercising the --claude-review api wiring offline.
+type fakeReviewClient struct {
+	responses map[string]json.RawMessage
+	err       error
+	calls     []string
+}
+
+func (f *fakeReviewClient) Review(ctx context.Context, kind, episodeID, prompt string) (json.RawMessage, error) {
+	f.calls = append(f.calls, kind)
+	if f.err != nil {
+		return nil, f.err
+	}
+	resp, ok := f.responses[kind]
+	if !ok {
+		return nil, fmt.Errorf("fake review client has no %s response", kind)
+	}
+	return resp, nil
+}
+
+func apiGenerateRequest(dir string) GenerateRequest {
+	req := testGenerateRequest(dir)
+	req.ClaudeReview = "api"
+	return req
+}
+
+func reviewJSON(t *testing.T, fields map[string]any) json.RawMessage {
+	t.Helper()
+	data, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
+func TestClaudeReviewAPIRejectedByValidation(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "episode")
+	req := testGenerateRequest(dir)
+	req.ClaudeReview = "council"
+	_, err := testRunner().GenerateReal(context.Background(), req)
+	if err == nil || !strings.Contains(err.Error(), "claude-review") {
+		t.Fatalf("expected unsupported claude-review rejection, got %v", err)
+	}
+}
+
+func TestClaudeAPIReviewMissingKeyFailsClosed(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	dir := filepath.Join(t.TempDir(), "episode")
+	// No injected ReviewClient -> builds from env -> must fail closed.
+	_, err := testRunner().GenerateReal(context.Background(), apiGenerateRequest(dir))
+	if err == nil || !strings.Contains(err.Error(), "ANTHROPIC_API_KEY") {
+		t.Fatalf("expected fail-closed on missing key, got %v", err)
+	}
+	if fileExists(filepath.Join(dir, "claude_script_review_response.json")) {
+		t.Fatal("no review response should be written without a key")
+	}
+}
+
+func TestClaudeAPIScriptReviewPassesAndBindsScriptHash(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "episode")
+	fake := &fakeReviewClient{responses: map[string]json.RawMessage{
+		// approved_script_hash deliberately wrong: the pilot must rebind it.
+		"script": reviewJSON(t, map[string]any{
+			"schema_version":                    "1.0",
+			"episode_id":                        "animus-test-001",
+			"verdict":                           "pass",
+			"production_readiness":              88,
+			"blocking_issues":                   []string{},
+			"suggested_revisions":               []string{},
+			"approved_script_hash":              "sha256:wrong",
+			"can_continue_to_visual_generation": true,
+		}),
+	}}
+	runner := Runner{Now: func() time.Time { return fixedNow }, ReviewClient: fake}
+	// External visual provider is unconfigured, so resume fails closed at the
+	// visual stage — which proves the API script review already passed.
+	_, err := runner.GenerateReal(context.Background(), apiGenerateRequest(dir))
+	if err == nil || !strings.Contains(err.Error(), "ANIMUS_VISUAL_COMMAND") {
+		t.Fatalf("expected to advance past api script review to visual config, got %v", err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0] != "script" {
+		t.Fatalf("expected one script review call, got %v", fake.calls)
+	}
+	manifest, err := loadEpisodeManifest(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, issue, err := runner.scriptReviewPassed(dir, manifest)
+	if err != nil || !ok {
+		t.Fatalf("api script review should pass with bound hash: ok=%v issue=%q err=%v", ok, issue, err)
+	}
+}
+
+func TestClaudeAPIScriptReviewFailVerdictBlocksAtGate(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "episode")
+	fake := &fakeReviewClient{responses: map[string]json.RawMessage{
+		"script": reviewJSON(t, map[string]any{
+			"schema_version":                    "1.0",
+			"episode_id":                        "animus-test-001",
+			"verdict":                           "fail",
+			"production_readiness":              40,
+			"blocking_issues":                   []string{"unsupported factual claim"},
+			"suggested_revisions":               []string{"cite a source"},
+			"can_continue_to_visual_generation": false,
+		}),
+	}}
+	runner := Runner{Now: func() time.Time { return fixedNow }, ReviewClient: fake}
+	res, err := runner.GenerateReal(context.Background(), apiGenerateRequest(dir))
+	if err != nil {
+		t.Fatalf("fail verdict should block, not error: %v", err)
+	}
+	if res.BlockedGate != StageClaudeScriptReview {
+		t.Fatalf("expected block at claude script review, got %+v", res)
+	}
+}
+
+func TestClaudeAPIFinalReviewWritesValidatedResponse(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "episode")
+	fake := &fakeReviewClient{responses: map[string]json.RawMessage{
+		"script": reviewJSON(t, map[string]any{
+			"schema_version": "1.0", "episode_id": "animus-test-001", "verdict": "pass",
+			"production_readiness": 88, "blocking_issues": []string{}, "suggested_revisions": []string{},
+			"can_continue_to_visual_generation": true,
+		}),
+		"final": reviewJSON(t, map[string]any{
+			"schema_version": "1.0", "episode_id": "animus-test-001", "verdict": "pass",
+			"production_readiness": 90, "blocking_issues": []string{}, "suggested_revisions": []string{},
+			"can_release_candidate": true,
+		}),
+	}}
+	runner := Runner{Now: func() time.Time { return fixedNow }, ReviewClient: fake}
+	_, _ = runner.GenerateReal(context.Background(), apiGenerateRequest(dir)) // stops at visual config
+
+	// Exercise the final-review step directly (reaching it organically needs
+	// ffmpeg + media providers). The request file is what the pipeline writes.
+	if err := writeText(filepath.Join(dir, "final_review_request.md"), "# Claude Final Review Request\nepisode animus-test-001"); err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := loadEpisodeManifest(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.ensureAPIFinalReview(context.Background(), dir, manifest); err != nil {
+		t.Fatalf("final review: %v", err)
+	}
+	if !finalReviewFilePasses(dir, manifest.EpisodeID) {
+		t.Fatal("api final review should pass the gate")
+	}
 }
 
 func testGenerateRequest(dir string) GenerateRequest {
