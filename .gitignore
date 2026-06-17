@@ -1,6 +1,9 @@
 # Build output and local demo/verify run directories
 /build/
 /dist/
+/episodes/*
+!/episodes/0001-after-git-push/
+!/episodes/0001-after-git-push/**
 
 # Go
 *.test

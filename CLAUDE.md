@@ -30,6 +30,23 @@ remain execution providers only. Animus News still owns workflow state, artifact
 validation, gates, production QA, release approval, and publish authority. See
 `docs/reports/M3_status.md` and ADRs `0009` through `0011`.
 
+L1 adds the first real CLI pilot path:
+
+- `animus-news pilot generate-real`
+- `animus-news pilot resume`
+- `animus-news pilot status`
+- `animus-news pilot validate`
+- `animus-news pilot import-claude-review`
+- optional `import-visual-shot` and `import-voice`
+
+The L1 target is a real `release_candidate` MP4 at
+`dist/<episode-id>-release-candidate.mp4`. It uses manual Claude JSON review
+checkpoints, external-command visual and voice provider boundaries,
+faster-whisper or explicit script-timing subtitles, and FFmpeg rendering. It
+does not publish publicly. See `docs/REAL_PILOT_V1.md`,
+`docs/CONNECTORS.md`, `docs/WORKFLOW_FINAL.md`, and
+`docs/reports/LAUNCH_SLICE_L1_status.md`.
+
 Key packages (all under `internal/shortform`):
 
 - `contenthash/` — deterministic sha256 over canonical JSON, excluding the hash field.
@@ -88,6 +105,11 @@ go test ./...      # all unit/integration tests (no network, no secrets)
 # CLI
 go run ./cmd/animus-news demo --episode episode-0001 --expect terminal
 go run ./cmd/animus-news validate-shortform <artifact>.json
+go run ./cmd/animus-news pilot generate-real --episode-id animus-oss-001 --prompt "..." --language ru --duration 45s --platforms tiktok,instagram,youtube --visual-provider external-command --voice-provider external-command --subtitle-provider faster-whisper --render-provider ffmpeg --claude-review manual --out ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot status --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot validate --episode-dir ./episodes/animus-oss-001
+make verify-real-pilot
 ```
 
 ## Working agreements
@@ -98,8 +120,12 @@ go run ./cmd/animus-news validate-shortform <artifact>.json
 - M3 provider lanes are opt-in only. DaVinci MCP may call only allowlisted tools;
   OmniVoice reference-voice workflows require consent metadata; no provider can approve
   artifacts or publish live.
+- L1 real pilot providers are opt-in only. `generate-real` must not silently use
+  mocks. Missing visual, voice, subtitle, FFmpeg, or Claude review artifacts must
+  fail closed or stop at an explicit manual checkpoint.
 - Record non-trivial decisions as ADRs under `docs/adr/NNNN-*.md`; keep the work ledger
-  (`docs/ledger/M1.md`, `docs/ledger/M2.md`, `docs/ledger/M3.md`) current. State must
+  (`docs/ledger/M1.md`, `docs/ledger/M2.md`, `docs/ledger/M3.md`,
+  `docs/ledger/LAUNCH_SLICE_L1.md`) current. State must
   be reconstructable from those files.
 - Prefer fewer, correct, tested components. A new gate needs a positive test **and** a
   failing-input test per blocking condition.

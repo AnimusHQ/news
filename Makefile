@@ -1,4 +1,4 @@
-.PHONY: help deps test vet fmt fmt-check check scan validate validate-artifact extract-claims dry-run start smoke worker verify verify-m2-local verify-m3 provider-capabilities demo demo-blocked
+.PHONY: help deps test vet fmt fmt-check check scan validate validate-artifact extract-claims dry-run start smoke worker verify verify-m2-local verify-m3 verify-real-pilot provider-capabilities demo demo-blocked
 
 BIN ?= build/animus-news
 DEMO_OUT ?= build/verify-demo
@@ -20,6 +20,7 @@ help:
 	@echo "  make verify            M3 single-signal gate: fmt + build + vet + test + scan + schema + e2e demo"
 	@echo "  make verify-m2-local   Run M2 local adapter and determinism checks"
 	@echo "  make verify-m3         Run M3 provider boundary, registry, and replay checks"
+	@echo "  make verify-real-pilot Run L1 real CLI pilot fake-provider integration checks"
 	@echo "  make provider-capabilities Print provider capability registry JSON"
 	@echo "  make demo              Run the short-form mock demo (success path)"
 	@echo "  make demo-blocked      Run the short-form mock demo with an injected gate failure"
@@ -116,6 +117,23 @@ verify-m3:
 	@go test ./internal/workflows -run 'TestShortFormWorkflow(ReplayIsDeterministic|DeterministicResultFixture|BlockedPathFixtures)|TestShortFormWorkflowDoesNotCallExternalProviderBoundaries' -count=1
 	@echo "==> M3 provider capability CLI"
 	@go run ./cmd/animus-news provider-capabilities >/dev/null
+
+verify-real-pilot:
+	@echo "==> L1 real pilot CLI and fake external-command provider checks"
+	@go test ./internal/shortform/pilot ./cmd/animus-news
+	@echo "==> L1 connector and workflow documentation presence checks"
+	@test -f docs/REAL_PILOT_V1.md
+	@test -f docs/CONNECTORS.md
+	@test -f docs/WORKFLOW_FINAL.md
+	@test -f docs/CONNECTOR_ROADMAP.md
+	@test -f docs/PROVIDER_CAPABILITY_MODEL.md
+	@test -f docs/ledger/LAUNCH_SLICE_L1.md
+	@test -f docs/reports/LAUNCH_SLICE_L1_status.md
+	@grep -q "Source and research connectors" docs/CONNECTORS.md
+	@grep -q "Visual video generation connectors" docs/CONNECTORS.md
+	@grep -q "Future full production workflow" docs/WORKFLOW_FINAL.md
+	@grep -q "Review Room" docs/WORKFLOW_FINAL.md
+	@grep -q "release_candidate" docs/REAL_PILOT_V1.md
 
 provider-capabilities:
 	go run ./cmd/animus-news provider-capabilities

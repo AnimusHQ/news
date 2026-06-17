@@ -99,6 +99,26 @@ func TestRunProviderCapabilitiesCommand(t *testing.T) {
 	}
 }
 
+func TestRunPilotGenerateRealRejectsMissingRequiredFlags(t *testing.T) {
+	err := run([]string{"animus-news", "pilot", "generate-real", "--episode-id", "episode-test"})
+	if err == nil {
+		t.Fatal("expected missing pilot flags to fail")
+	}
+	if !strings.Contains(err.Error(), "missing required flags") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunPilotStatusRequiresEpisodeDir(t *testing.T) {
+	err := run([]string{"animus-news", "pilot", "status"})
+	if err == nil {
+		t.Fatal("expected missing --episode-dir to fail")
+	}
+	if !strings.Contains(err.Error(), "--episode-dir") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout

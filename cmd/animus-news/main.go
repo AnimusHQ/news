@@ -14,6 +14,7 @@ import (
 	"github.com/AnimusHQ/news/internal/pipeline"
 	"github.com/AnimusHQ/news/internal/security"
 	"github.com/AnimusHQ/news/internal/shortform"
+	"github.com/AnimusHQ/news/internal/shortform/pilot"
 	"github.com/AnimusHQ/news/internal/shortform/providers/capabilities"
 	"github.com/AnimusHQ/news/internal/shortform/runner"
 	"github.com/AnimusHQ/news/internal/temporalops"
@@ -136,6 +137,8 @@ func run(args []string) error {
 		}
 		fmt.Println(string(encoded))
 		return nil
+	case "pilot":
+		return runPilot(ctx, args[2:])
 	case "worker":
 		return worker.Run(ctx, worker.Config{})
 	case "start-workflow":
@@ -178,6 +181,159 @@ func run(args []string) error {
 	default:
 		return fmt.Errorf("unknown command %q", args[1])
 	}
+}
+
+func runPilot(ctx context.Context, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: animus-news pilot <generate-real|resume|status|validate|import-claude-review|import-visual-shot|import-voice>")
+	}
+	switch args[0] {
+	case "generate-real":
+		req, err := parsePilotGenerateArgs(args[1:])
+		if err != nil {
+			return err
+		}
+		res, err := pilot.GenerateReal(ctx, req)
+		if err != nil {
+			return err
+		}
+		fmt.Println(res.String())
+		return nil
+	case "resume":
+		episodeDir, err := parseEpisodeDirFlag("pilot resume", args[1:])
+		if err != nil {
+			return err
+		}
+		res, err := pilot.Resume(ctx, episodeDir)
+		if err != nil {
+			return err
+		}
+		fmt.Println(res.String())
+		return nil
+	case "status":
+		episodeDir, err := parseEpisodeDirFlag("pilot status", args[1:])
+		if err != nil {
+			return err
+		}
+		res, err := pilot.Status(episodeDir)
+		if err != nil {
+			return err
+		}
+		fmt.Println(res.String())
+		return nil
+	case "validate":
+		episodeDir, err := parseEpisodeDirFlag("pilot validate", args[1:])
+		if err != nil {
+			return err
+		}
+		report, err := pilot.Validate(episodeDir)
+		if err != nil {
+			return err
+		}
+		encoded, err := json.MarshalIndent(report, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(encoded))
+		if !report.Valid {
+			return fmt.Errorf("pilot episode is not release-candidate ready")
+		}
+		return nil
+	case "import-claude-review":
+		req, err := parseImportClaudeReviewArgs(args[1:])
+		if err != nil {
+			return err
+		}
+		return pilot.ImportClaudeReview(req)
+	case "import-visual-shot":
+		req, err := parseImportAssetArgs("pilot import-visual-shot", args[1:], true)
+		if err != nil {
+			return err
+		}
+		return pilot.ImportVisualShot(req)
+	case "import-voice":
+		req, err := parseImportAssetArgs("pilot import-voice", args[1:], false)
+		if err != nil {
+			return err
+		}
+		return pilot.ImportVoice(req)
+	default:
+		return fmt.Errorf("unknown pilot command %q", args[0])
+	}
+}
+
+func parsePilotGenerateArgs(args []string) (pilot.GenerateRequest, error) {
+	fs := flag.NewFlagSet("pilot generate-real", flag.ContinueOnError)
+	episodeID := fs.String("episode-id", "", "episode id")
+	prompt := fs.String("prompt", "", "source prompt")
+	language := fs.String("language", "", "language code")
+	duration := fs.String("duration", "", "duration such as 45s")
+	platforms := fs.String("platforms", "", "comma-separated platforms")
+	visualProvider := fs.String("visual-provider", "", "visual provider")
+	voiceProvider := fs.String("voice-provider", "", "voice provider")
+	subtitleProvider := fs.String("subtitle-provider", "", "subtitle provider")
+	renderProvider := fs.String("render-provider", "", "render provider")
+	claudeReview := fs.String("claude-review", "", "Claude review mode")
+	out := fs.String("out", "", "episode output directory")
+	if err := fs.Parse(args); err != nil {
+		return pilot.GenerateRequest{}, err
+	}
+	return pilot.GenerateRequest{
+		EpisodeID:        *episodeID,
+		Prompt:           *prompt,
+		Language:         *language,
+		Duration:         *duration,
+		Platforms:        strings.Split(*platforms, ","),
+		VisualProvider:   *visualProvider,
+		VoiceProvider:    *voiceProvider,
+		SubtitleProvider: *subtitleProvider,
+		RenderProvider:   *renderProvider,
+		ClaudeReview:     *claudeReview,
+		OutDir:           *out,
+	}, nil
+}
+
+func parseEpisodeDirFlag(command string, args []string) (string, error) {
+	fs := flag.NewFlagSet(command, flag.ContinueOnError)
+	episodeDir := fs.String("episode-dir", "", "episode directory")
+	if err := fs.Parse(args); err != nil {
+		return "", err
+	}
+	if *episodeDir == "" {
+		return "", fmt.Errorf("usage: animus-news %s --episode-dir <dir>", command)
+	}
+	return *episodeDir, nil
+}
+
+func parseImportClaudeReviewArgs(args []string) (pilot.ImportClaudeReviewRequest, error) {
+	fs := flag.NewFlagSet("pilot import-claude-review", flag.ContinueOnError)
+	episodeDir := fs.String("episode-dir", "", "episode directory")
+	kind := fs.String("kind", "", "script or final")
+	file := fs.String("file", "", "Claude JSON response file")
+	if err := fs.Parse(args); err != nil {
+		return pilot.ImportClaudeReviewRequest{}, err
+	}
+	if *episodeDir == "" || *kind == "" || *file == "" {
+		return pilot.ImportClaudeReviewRequest{}, fmt.Errorf("usage: animus-news pilot import-claude-review --episode-dir <dir> --kind <script|final> --file <json>")
+	}
+	return pilot.ImportClaudeReviewRequest{EpisodeDir: *episodeDir, Kind: *kind, File: *file}, nil
+}
+
+func parseImportAssetArgs(command string, args []string, requireShot bool) (pilot.ImportAssetRequest, error) {
+	fs := flag.NewFlagSet(command, flag.ContinueOnError)
+	episodeDir := fs.String("episode-dir", "", "episode directory")
+	shotID := fs.String("shot-id", "", "shot id")
+	file := fs.String("file", "", "asset file")
+	if err := fs.Parse(args); err != nil {
+		return pilot.ImportAssetRequest{}, err
+	}
+	if *episodeDir == "" || *file == "" || requireShot && *shotID == "" {
+		if requireShot {
+			return pilot.ImportAssetRequest{}, fmt.Errorf("usage: animus-news %s --episode-dir <dir> --shot-id <shot-id> --file <path>", command)
+		}
+		return pilot.ImportAssetRequest{}, fmt.Errorf("usage: animus-news %s --episode-dir <dir> --file <path>", command)
+	}
+	return pilot.ImportAssetRequest{EpisodeDir: *episodeDir, ShotID: *shotID, File: *file}, nil
 }
 
 // runDemo drives the short-form pipeline end-to-end on mock providers and writes
@@ -274,6 +430,13 @@ Usage:
   animus-news dry-run <episode-dir>
   animus-news scan-secrets <path>
   animus-news provider-capabilities
+  animus-news pilot generate-real --episode-id <id> --prompt <text> --language <lang> --duration <seconds> --platforms <list> --visual-provider external-command --voice-provider external-command --subtitle-provider <faster-whisper|script-timing> --render-provider ffmpeg --claude-review manual --out <episode-dir>
+  animus-news pilot resume --episode-dir <episode-dir>
+  animus-news pilot status --episode-dir <episode-dir>
+  animus-news pilot validate --episode-dir <episode-dir>
+  animus-news pilot import-claude-review --episode-dir <episode-dir> --kind <script|final> --file <json>
+  animus-news pilot import-visual-shot --episode-dir <episode-dir> --shot-id <shot-id> --file <mp4>
+  animus-news pilot import-voice --episode-dir <episode-dir> --file <wav>
   animus-news worker
   animus-news start-workflow <episode-id> <episode-dir>
   animus-news signal-human-qa <workflow-id> <approve|approve_with_minor_edits|request_revision|block>
