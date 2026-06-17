@@ -3,14 +3,18 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/AnimusHQ/news/internal/artifacts"
 	claimextractor "github.com/AnimusHQ/news/internal/claims"
 	"github.com/AnimusHQ/news/internal/pipeline"
 	"github.com/AnimusHQ/news/internal/security"
 	"github.com/AnimusHQ/news/internal/shortform"
+	"github.com/AnimusHQ/news/internal/shortform/runner"
 	"github.com/AnimusHQ/news/internal/temporalops"
 	"github.com/AnimusHQ/news/internal/worker"
 )
@@ -49,6 +53,8 @@ func run(args []string) error {
 			return artifacts.ValidateReport(report)
 		}
 		return nil
+	case "demo":
+		return runDemo(ctx, args[2:])
 	case "validate-shortform":
 		if len(args) != 3 {
 			return fmt.Errorf("usage: animus-news validate-shortform <artifact-file>")
@@ -159,6 +165,75 @@ func run(args []string) error {
 	}
 }
 
+// runDemo drives the short-form pipeline end-to-end on mock providers and writes
+// all artifacts, gate decisions, and an audit log under the run directory. With
+// --expect it returns a single pass/fail signal (used by `make verify`).
+func runDemo(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("demo", flag.ContinueOnError)
+	episode := fs.String("episode", "episode-0001", "episode id to run")
+	inject := fs.String("inject", "none", "failure injection: none|unapproved_storyboard|render_no_audio|release_denied")
+	out := fs.String("out", filepath.Join("dist", "demo"), "output base directory")
+	expect := fs.String("expect", "", "assertion: terminal | blocked:<gate> (empty = no assertion)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	injection := map[string]runner.Injection{
+		"none":                  runner.InjectNone,
+		"unapproved_storyboard": runner.InjectUnapprovedStoryboard,
+		"render_no_audio":       runner.InjectRenderNoAudio,
+		"release_denied":        runner.InjectReleaseDenied,
+	}[*inject]
+
+	res, err := runner.Run(ctx, runner.Config{EpisodeID: *episode, OutputDir: *out, Inject: injection})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("episode:     %s\n", res.EpisodeID)
+	fmt.Printf("run dir:     %s\n", res.RunDir)
+	fmt.Printf("state:       %s\n", res.State)
+	fmt.Printf("blocked:     %v\n", res.Blocked)
+	if res.Blocked {
+		fmt.Printf("block reason: %s\n", res.BlockReason)
+	}
+	fmt.Printf("artifacts:   %d  gates evaluated: %d\n", len(res.Artifacts), len(res.GateResults))
+
+	if *expect == "" {
+		return nil
+	}
+	if err := assertExpectation(res, *expect); err != nil {
+		return err
+	}
+	fmt.Printf("expectation met: %s\n", *expect)
+	return nil
+}
+
+func assertExpectation(res runner.Result, expect string) error {
+	if expect == "terminal" {
+		if res.Blocked || res.State != "published_dry_run_complete" {
+			return fmt.Errorf("expected terminal success, got state=%s blocked=%v", res.State, res.Blocked)
+		}
+		return nil
+	}
+	if gate, ok := strings.CutPrefix(expect, "blocked:"); ok {
+		if !res.Blocked {
+			return fmt.Errorf("expected a block at %s, but the run completed", gate)
+		}
+		if len(res.GateResults) > 0 {
+			last := res.GateResults[len(res.GateResults)-1]
+			if last.Gate == gate || res.State == gate {
+				return nil
+			}
+		}
+		if res.State == gate {
+			return nil
+		}
+		return fmt.Errorf("expected block at %q, got state=%s reason=%s", gate, res.State, res.BlockReason)
+	}
+	return fmt.Errorf("unknown --expect value: %s", expect)
+}
+
 func parseValidateArgs(args []string) (bool, string, error) {
 	if len(args) == 0 || args[0] == "--json" && len(args) != 2 {
 		return false, "", fmt.Errorf("usage: animus-news validate [--json] <path>")
@@ -176,6 +251,7 @@ func printUsage() {
 	fmt.Println(`Animus News CLI
 
 Usage:
+  animus-news demo [--episode <id>] [--inject <mode>] [--out <dir>] [--expect <terminal|blocked:<gate>>]
   animus-news validate [--json] <path>
   animus-news validate-shortform <artifact-file>
   animus-news validate-episode <episode-dir>
