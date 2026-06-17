@@ -1,0 +1,8 @@
+# Build output and local demo/verify run directories
+/build/
+/dist/
+
+# Go
+*.test
+*.out
+coverage.txt

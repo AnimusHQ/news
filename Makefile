@@ -1,4 +1,7 @@
-.PHONY: help deps test vet fmt check scan validate validate-artifact extract-claims dry-run start smoke worker
+.PHONY: help deps test vet fmt check scan validate validate-artifact extract-claims dry-run start smoke worker verify demo demo-blocked
+
+BIN ?= build/animus-news
+DEMO_OUT ?= build/verify-demo
 
 help:
 	@echo "Animus News local commands"
@@ -13,6 +16,9 @@ help:
 	@echo "  make start             Alias for dry-run"
 	@echo "  make smoke             Run release-readiness local checks"
 	@echo "  make worker            Start Temporal worker; requires Temporal service"
+	@echo "  make verify            M1 single-signal gate: build + vet + test + schema + e2e demo"
+	@echo "  make demo              Run the short-form mock demo (success path)"
+	@echo "  make demo-blocked      Run the short-form mock demo with an injected gate failure"
 
 deps:
 	go mod download
@@ -49,3 +55,35 @@ smoke: test vet scan validate validate-artifact extract-claims dry-run
 
 worker:
 	go run ./cmd/animus-news worker
+
+# verify is the single green/red signal for M1. It builds, vets, tests, compiles
+# the CLI, runs the end-to-end mock demo (success and failure-injected variants),
+# and schema-validates every produced short-form artifact. No network, no secrets.
+verify:
+	@echo "==> [1/6] go build ./..."
+	@go build ./...
+	@echo "==> [2/6] go vet ./..."
+	@go vet ./...
+	@echo "==> [3/6] go test ./..."
+	@go test ./...
+	@echo "==> [4/6] compile CLI -> $(BIN)"
+	@go build -o $(BIN) ./cmd/animus-news
+	@echo "==> [5/6] end-to-end mock demo (success + failure-injected)"
+	@set -e; \
+		$(BIN) demo --episode episode-0001 --out $(DEMO_OUT)/success --expect terminal; \
+		echo "---"; \
+		$(BIN) demo --episode episode-0001 --inject unapproved_storyboard --out $(DEMO_OUT)/blocked --expect blocked:storyboard_image
+	@echo "==> [6/6] schema validation of produced short-form artifacts"
+	@set -e; for f in $(DEMO_OUT)/success/episode-0001/*_manifest.json \
+			$(DEMO_OUT)/success/episode-0001/production_candidate.json \
+			$(DEMO_OUT)/success/episode-0001/release_approval.json; do \
+		$(BIN) validate-shortform "$$f" >/dev/null; \
+	done
+	@echo ""
+	@echo "M1 VERIFY: GREEN"
+
+demo:
+	go run ./cmd/animus-news demo --episode episode-0001 --out $(DEMO_OUT)/success --expect terminal
+
+demo-blocked:
+	go run ./cmd/animus-news demo --episode episode-0001 --inject unapproved_storyboard --out $(DEMO_OUT)/blocked --expect blocked:storyboard_image
