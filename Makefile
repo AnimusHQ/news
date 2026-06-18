@@ -1,4 +1,4 @@
-.PHONY: help deps test vet fmt fmt-check check scan validate validate-artifact extract-claims dry-run start smoke worker verify verify-m2-local verify-m3 verify-real-pilot verify-l2-providers provider-capabilities demo demo-blocked
+.PHONY: help deps test vet fmt fmt-check check scan validate validate-artifact extract-claims dry-run start smoke worker verify verify-m2-local verify-m3 verify-real-pilot verify-l2-providers verify-mvp-docker provider-capabilities demo demo-blocked
 
 BIN ?= build/animus-news
 DEMO_OUT ?= build/verify-demo
@@ -22,6 +22,7 @@ help:
 	@echo "  make verify-m3         Run M3 provider boundary, registry, and replay checks"
 	@echo "  make verify-real-pilot Run L1 real CLI pilot fake-provider integration checks"
 	@echo "  make verify-l2-providers Run L2 provider checks (fake HTTP + fake external-command; no real calls)"
+	@echo "  make verify-mvp-docker Static checks for the Dockerized MVP runtime; no live calls"
 	@echo "  make provider-capabilities Print provider capability registry JSON"
 	@echo "  make demo              Run the short-form mock demo (success path)"
 	@echo "  make demo-blocked      Run the short-form mock demo with an injected gate failure"
@@ -171,6 +172,14 @@ verify-l2-providers:
 	@$(MAKE) scan >/dev/null
 	@echo ""
 	@echo "L2 PROVIDERS VERIFY: GREEN"
+
+verify-mvp-docker:
+	@echo "==> MVP Docker static configuration checks"
+	@go test ./internal/shortform/pilot -run 'TestMVPDockerStatic|TestMVPDockerEntrypointRejectsEmptyPrompt' -count=1
+	@echo "==> MVP Docker secret scan"
+	@$(MAKE) scan >/dev/null
+	@echo ""
+	@echo "MVP DOCKER VERIFY: GREEN"
 
 provider-capabilities:
 	go run ./cmd/animus-news provider-capabilities

@@ -1,0 +1,38 @@
+services:
+  chatterbox:
+    profiles: ["mvp"]
+    build:
+      context: .
+      dockerfile: docker/chatterbox-server.Dockerfile
+    env_file:
+      - .env.mvp.local
+    environment:
+      CHATTERBOX_HOST: 0.0.0.0
+      CHATTERBOX_PORT: "4123"
+    expose:
+      - "4123"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:4123/health >/dev/null"]
+      interval: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+  animus-news:
+    profiles: ["mvp"]
+    build:
+      context: .
+      dockerfile: docker/animus-news.Dockerfile
+    env_file:
+      - .env.mvp.local
+    environment:
+      EPISODE_ID: ${EPISODE_ID:-}
+      PROMPT: ${PROMPT:-}
+      LANGUAGE: ${LANGUAGE:-}
+      DURATION: ${DURATION:-}
+      PLATFORMS: ${PLATFORMS:-}
+    volumes:
+      - ./episodes:/workspace/episodes
+    depends_on:
+      chatterbox:
+        condition: service_healthy
