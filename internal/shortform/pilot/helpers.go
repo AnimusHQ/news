@@ -26,7 +26,7 @@ type externalConfig struct {
 func writeTopicYAML(episodeDir string, manifest EpisodeManifest) error {
 	body := fmt.Sprintf(`schema_version: "1.0"
 episode_id: "%s"
-title_working: "Launch pilot %s"
+title_working: "Runtime pilot %s"
 status: "generated"
 language: "%s"
 duration: "%s"
@@ -69,7 +69,7 @@ func writePilotResearchPack(episodeDir string, manifest EpisodeManifest) error {
 
 func yamlList(values []string) string {
 	if len(values) == 0 {
-		return "  - youtube"
+		return "  []"
 	}
 	var b strings.Builder
 	for _, value := range values {
@@ -81,75 +81,75 @@ func yamlList(values []string) string {
 func buildScript(manifest EpisodeManifest) string {
 	prompt := strings.TrimSpace(manifest.OriginalPrompt)
 	if prompt == "" {
-		prompt = "Explain the value of sustainable open-source ecosystems."
+		return ""
 	}
 	lang := strings.ToLower(strings.TrimSpace(manifest.Language))
 	if lang == "ru" || strings.HasPrefix(lang, "ru-") {
 		return fmt.Sprintf(`# Script
 
 ## Hook
-Open-source держится не только на коде. Он держится на людях, процессах и устойчивой экосистеме.
+%s
 
 ## Beats
-1. Проблема: разработчик может написать библиотеку, но без поддержки она быстро становится риском для пользователей.
-2. Поворот: устойчивая экосистема распределяет ответственность между мейнтейнерами, контрибьюторами, документацией, проверками и финансированием.
-3. Пример: хороший проект показывает, как вносить изменения, как проверять качество и как безопасно выпускать релизы.
-4. Вывод: open-source сильнее, когда вокруг кода есть понятные правила, доверие и путь для новых участников.
+1. Обозначить вопрос или тезис из runtime prompt.
+2. Дать короткий контекст без внешних фактов, если источники не приложены.
+3. Сформулировать практический вывод, явно связанный с prompt.
+4. Завершить без hardcoded CTA, если оператор не передал CTA отдельным входом.
 
 ## Voiceover
 %s
 
-Представь проект, которым пользуются сотни людей. Код важен, но этого мало. Нужны понятные правила участия, проверка изменений, документация, релизы и поддержка мейнтейнеров. Без этого даже полезная библиотека превращается в хрупкую зависимость.
+Это черновой voiceover для runtime prompt. Он должен оставаться нейтральным и не добавлять тему, аудиторию, CTA или факты, которых нет во входном prompt.
 
-Устойчивая open-source экосистема делает другое: она помогает новым участникам войти в проект, снижает нагрузку на одного автора и сохраняет доверие пользователей. Поэтому зрелый open-source - это не просто репозиторий. Это сообщество, процессы и ответственность вокруг кода.
+Сначала зафиксируй главный вопрос. Затем объясни контекст простыми словами. После этого покажи, что зрителю нужно понять или проверить дальше. Если для темы нужны источники, не выдавай этот L1 pilot за source-grounded финальный материал.
 
 ## Visual Notes
-- Vertical 9:16 cinematic scenes.
-- Maintainers, contributors, review/check pipelines, release candidate handoff.
+- Vertical 9:16 educational scenes derived only from the runtime prompt.
+- Use neutral explanatory visuals, abstract context, and readable pacing.
 - No fake readable UI text, no real brand logos, no misleading screenshots.
 
 ## CTA
-Если ты строишь open-source проект, думай не только о коде, но и о системе вокруг него.
+No CTA was supplied as runtime input. Do not invent one.
 
 ## Estimated Timing
 Target: %s.
 
 ## AI Disclosure Note
 AI-assisted script and media generation may be used. Final publishing requires human QA, source/provenance review, and disclosure review.
-`, prompt, manifest.Duration)
+`, prompt, prompt, manifest.Duration)
 	}
 	return fmt.Sprintf(`# Script
 
 ## Hook
-Open source is not sustained by code alone. It needs people, process, trust, and a durable ecosystem.
+%s
 
 ## Beats
-1. Problem: a useful library can become a risk when maintenance depends on one exhausted person.
-2. Turn: a sustainable ecosystem distributes responsibility across maintainers, contributors, documentation, quality gates, and funding.
-3. Example: a healthy project makes contribution, verification, and release paths visible.
-4. Takeaway: open source becomes stronger when trust and operating rules surround the code.
+1. State the question or thesis from the runtime prompt.
+2. Give brief context without adding external facts when sources are not attached.
+3. Name the practical takeaway that follows from the prompt.
+4. Close without a hardcoded CTA when the operator did not provide one.
 
 ## Voiceover
 %s
 
-Imagine a project used by hundreds of people. The code matters, but code is not enough. Contributors need a clear way in. Maintainers need review, tests, documentation, releases, and support. Without that ecosystem, even a useful library can become a fragile dependency.
+This is a draft voiceover for the runtime prompt. It must stay neutral and avoid adding a topic, audience, CTA, or factual claim that was not supplied as runtime content input.
 
-A sustainable open-source ecosystem does the opposite. It lowers the cost of contribution, spreads responsibility, and keeps user trust intact. Mature open source is not just a repository. It is a community and operating system around the code.
+Start by naming the central question. Explain the context in simple language. Then show what the viewer should understand or verify next. If the topic needs sources, do not present this L1 pilot as source-grounded final material.
 
 ## Visual Notes
-- Vertical 9:16 cinematic scenes.
-- Maintainers, contributors, review/check pipelines, release candidate handoff.
+- Vertical 9:16 educational scenes derived only from the runtime prompt.
+- Use neutral explanatory visuals, abstract context, and readable pacing.
 - No fake readable UI text, no real brand logos, no misleading screenshots.
 
 ## CTA
-If you build open source, design the ecosystem around the code too.
+No CTA was supplied as runtime input. Do not invent one.
 
 ## Estimated Timing
 Target: %s.
 
 ## AI Disclosure Note
 AI-assisted script and media generation may be used. Final publishing requires human QA, source/provenance review, and disclosure review.
-`, prompt, manifest.Duration)
+`, prompt, prompt, manifest.Duration)
 }
 
 func buildShotRequests(manifest EpisodeManifest) []VisualShotRequest {
@@ -159,14 +159,14 @@ func buildShotRequests(manifest EpisodeManifest) []VisualShotRequest {
 	}
 	durations := []float64{round1(total * 0.34), round1(total * 0.33), round1(total * 0.33)}
 	durations[2] = round1(total - durations[0] - durations[1])
-	prefix := "Vertical cinematic 9:16 video about"
+	prefix := "Vertical 9:16 educational video derived from the runtime prompt"
 	if strings.EqualFold(manifest.Language, "ru") {
-		prefix = "Вертикальное кинематографичное 9:16 видео о"
+		prefix = "Вертикальное 9:16 образовательное видео по runtime prompt"
 	}
 	return []VisualShotRequest{
 		{
 			ShotID: "shot-001", SceneID: "scene-001", DurationSec: durations[0],
-			Prompt:            fmt.Sprintf("%s open-source maintainers working carefully on a resilient community project, realistic, modern, no readable fake UI text. Theme: %s", prefix, manifest.OriginalPrompt),
+			Prompt:            fmt.Sprintf("%s. Opening visual for this prompt only: %s. Use neutral abstract imagery and no readable fake UI text.", prefix, manifest.OriginalPrompt),
 			NegativePrompt:    "watermark, distorted text, unreadable UI, broken hands, brand logos, fake screenshots",
 			Width:             1080,
 			Height:            1920,
@@ -177,7 +177,7 @@ func buildShotRequests(manifest EpisodeManifest) []VisualShotRequest {
 		},
 		{
 			ShotID: "shot-002", SceneID: "scene-002", DurationSec: durations[1],
-			Prompt:            "Vertical cinematic 9:16 video showing contributors, review gates, documentation, and release checks as abstract non-readable interface shapes, modern educational IT media style.",
+			Prompt:            fmt.Sprintf("Vertical 9:16 educational middle scene expanding the runtime prompt with abstract context, relationships, and motion. Prompt: %s", manifest.OriginalPrompt),
 			NegativePrompt:    "watermark, distorted text, readable fake UI, broken hands, brand logos, social media logos",
 			Width:             1080,
 			Height:            1920,
@@ -188,7 +188,7 @@ func buildShotRequests(manifest EpisodeManifest) []VisualShotRequest {
 		},
 		{
 			ShotID: "shot-003", SceneID: "scene-003", DurationSec: durations[2],
-			Prompt:            "Vertical cinematic 9:16 video of an open-source community release candidate handoff, calm optimistic production mood, abstract code shapes, no readable text.",
+			Prompt:            fmt.Sprintf("Vertical 9:16 closing scene for the runtime prompt, focused on a clear generic takeaway without adding a new topic. Prompt: %s", manifest.OriginalPrompt),
 			NegativePrompt:    "watermark, distorted text, unreadable UI, broken hands, brand logos, fake terminal text",
 			Width:             1080,
 			Height:            1920,

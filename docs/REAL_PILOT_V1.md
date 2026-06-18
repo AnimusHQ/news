@@ -7,24 +7,31 @@ It does not publish publicly.
 ## Command
 
 ```bash
+EPISODE_ID=<episode-id>
+PROMPT='<operator-provided prompt>'
+LANGUAGE=ru
+DURATION=45s
+PLATFORMS=tiktok,instagram,youtube
+EPISODE_DIR="./episodes/${EPISODE_ID}"
+
 go run ./cmd/animus-news pilot generate-real \
-  --episode-id animus-oss-001 \
-  --prompt "Объясни, почему open-source разработчикам нужна устойчивая экосистема" \
-  --language ru \
-  --duration 45s \
-  --platforms tiktok,instagram,youtube \
+  --episode-id "$EPISODE_ID" \
+  --prompt "$PROMPT" \
+  --language "$LANGUAGE" \
+  --duration "$DURATION" \
+  --platforms "$PLATFORMS" \
   --visual-provider external-command \
   --voice-provider external-command \
   --subtitle-provider faster-whisper \
   --render-provider ffmpeg \
   --claude-review manual \
-  --out ./episodes/animus-oss-001
+  --out "$EPISODE_DIR"
 ```
 
 Final successful output:
 
 ```text
-episodes/animus-oss-001/dist/animus-oss-001-release-candidate.mp4
+episodes/<episode-id>/dist/<episode-id>-release-candidate.mp4
 ```
 
 The output state and file name use `release_candidate`. The CLI does not call
@@ -94,26 +101,28 @@ Visual external command:
 
 ```bash
 export ANIMUS_VISUAL_COMMAND=/path/to/visual-provider-wrapper
-export ANIMUS_VISUAL_INPUT_ROOT=/absolute/path/to/episodes/animus-oss-001
-export ANIMUS_VISUAL_OUTPUT_ROOT=/absolute/path/to/episodes/animus-oss-001
+export ANIMUS_VISUAL_INPUT_ROOT=/absolute/path/to/episodes/<episode-id>
+export ANIMUS_VISUAL_OUTPUT_ROOT=/absolute/path/to/episodes/<episode-id>
 export ANIMUS_VISUAL_TIMEOUT=10m
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 ```
 
 Voice external command:
 
 ```bash
 export ANIMUS_VOICE_COMMAND=/path/to/voice-provider-wrapper
-export ANIMUS_VOICE_INPUT_ROOT=/absolute/path/to/episodes/animus-oss-001
-export ANIMUS_VOICE_OUTPUT_ROOT=/absolute/path/to/episodes/animus-oss-001
+export ANIMUS_VOICE_INPUT_ROOT=/absolute/path/to/episodes/<episode-id>
+export ANIMUS_VOICE_OUTPUT_ROOT=/absolute/path/to/episodes/<episode-id>
 export ANIMUS_VOICE_TIMEOUT=10m
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 ```
 
 Faster-whisper sidecar command:
 
 ```bash
 export ANIMUS_FASTER_WHISPER_COMMAND=/path/to/faster-whisper-wrapper
-export ANIMUS_FASTER_WHISPER_INPUT_ROOT=/absolute/path/to/episodes/animus-oss-001
-export ANIMUS_FASTER_WHISPER_OUTPUT_ROOT=/absolute/path/to/episodes/animus-oss-001
+export ANIMUS_FASTER_WHISPER_INPUT_ROOT=/absolute/path/to/episodes/<episode-id>
+export ANIMUS_FASTER_WHISPER_OUTPUT_ROOT=/absolute/path/to/episodes/<episode-id>
 export ANIMUS_FASTER_WHISPER_TIMEOUT=10m
 ```
 
@@ -137,21 +146,21 @@ Input:
 ```json
 {
   "schema_version": "1.0",
-  "episode_id": "animus-oss-001",
+  "episode_id": "<episode-id>",
   "provider": "external-command",
   "shots": [
     {
       "shot_id": "shot-001",
       "scene_id": "scene-001",
       "duration_sec": 5,
-      "prompt": "Vertical cinematic 9:16 video...",
+      "prompt": "<runtime shot prompt>",
       "negative_prompt": "watermark, distorted text...",
       "width": 1080,
       "height": 1920,
       "fps": 30
     }
   ],
-  "output_dir": "./episodes/animus-oss-001/visual"
+  "output_dir": "./episodes/<episode-id>/visual"
 }
 ```
 
@@ -160,13 +169,13 @@ Output:
 ```json
 {
   "schema_version": "1.0",
-  "episode_id": "animus-oss-001",
+  "episode_id": "<episode-id>",
   "provider": "seedance-wrapper",
   "shots": [
     {
       "shot_id": "shot-001",
       "status": "generated",
-      "output_path": "./episodes/animus-oss-001/visual/shot-001.mp4",
+      "output_path": "./episodes/<episode-id>/visual/shot-001.mp4",
       "output_hash": "sha256:...",
       "duration_sec": 5,
       "width": 1080,
@@ -187,10 +196,10 @@ Input:
 ```json
 {
   "schema_version": "1.0",
-  "episode_id": "animus-oss-001",
+  "episode_id": "<episode-id>",
   "language": "ru",
   "text": "Voiceover text...",
-  "output_dir": "./episodes/animus-oss-001/audio"
+  "output_dir": "./episodes/<episode-id>/audio"
 }
 ```
 
@@ -199,9 +208,9 @@ Output:
 ```json
 {
   "schema_version": "1.0",
-  "episode_id": "animus-oss-001",
+  "episode_id": "<episode-id>",
   "provider": "omnivoice-wrapper",
-  "output_path": "./episodes/animus-oss-001/audio/voiceover.wav",
+  "output_path": "./episodes/<episode-id>/audio/voiceover.wav",
   "output_hash": "sha256:...",
   "duration_sec": 44.7,
   "sample_rate": 48000,
@@ -218,7 +227,7 @@ Output:
 
 ```bash
 go run ./cmd/animus-news pilot import-claude-review \
-  --episode-dir ./episodes/animus-oss-001 \
+  --episode-dir ./episodes/<episode-id> \
   --kind script \
   --file ./claude_script_review_response.json
 ```
@@ -226,7 +235,7 @@ go run ./cmd/animus-news pilot import-claude-review \
 5. Resume:
 
 ```bash
-go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot resume --episode-dir ./episodes/<episode-id>
 ```
 
 6. After render, send `final_review_request.md` to Claude.
@@ -234,7 +243,7 @@ go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
 
 ```bash
 go run ./cmd/animus-news pilot import-claude-review \
-  --episode-dir ./episodes/animus-oss-001 \
+  --episode-dir ./episodes/<episode-id> \
   --kind final \
   --file ./final_review_response.json
 ```
@@ -271,8 +280,8 @@ Verification (no real provider calls): `make verify-l2-providers`.
 ## Validation
 
 ```bash
-go run ./cmd/animus-news pilot status --episode-dir ./episodes/animus-oss-001
-go run ./cmd/animus-news pilot validate --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot status --episode-dir ./episodes/<episode-id>
+go run ./cmd/animus-news pilot validate --episode-dir ./episodes/<episode-id>
 make verify-real-pilot
 ```
 

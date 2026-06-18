@@ -63,6 +63,7 @@ closed when its variables are missing.
 ### Claude API (native)
 
 ```bash
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 export ANTHROPIC_API_KEY=...                 # from your secrets manager
 export ANIMUS_CLAUDE_MODEL=claude-opus-4-8   # optional
 export ANIMUS_CLAUDE_TIMEOUT=60s             # optional
@@ -73,6 +74,7 @@ export ANIMUS_CLAUDE_TIMEOUT=60s             # optional
 
 1. Deploy a Chatterbox server (GPU recommended); confirm `/health`.
 2. Point `ANIMUS_VOICE_COMMAND` at the wrapper and set `CHATTERBOX_BASE_URL`.
+   Set `ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1` only for an intentional local live run.
 3. See `docs/runbooks/chatterbox_voice_wrapper.md`.
 
 ### Seedance (cloud API, via wrapper)
@@ -80,6 +82,7 @@ export ANIMUS_CLAUDE_TIMEOUT=60s             # optional
 1. Provision a Seedance API key in your secrets manager.
 2. Point `ANIMUS_VISUAL_COMMAND` at the wrapper; export `SEEDANCE_API_KEY` in the
    wrapper environment only.
+   Set `ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1` only for an intentional live run.
 3. See `docs/runbooks/seedance_visual_wrapper.md`.
 
 ### faster-whisper (sidecar)
@@ -97,6 +100,8 @@ fail-closed + redaction patterns.
 
 - Missing provider config → the pilot stops with a clear error naming the missing
   variable. `generate-real` never silently falls back to mocks.
+- Missing `ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1` → native Claude API and live
+  wrapper calls fail closed before network or paid provider execution.
 - Native adapters: missing key → fail closed; 4xx / validation failures → no
   retry; 429 / 5xx / transport → bounded retry; keys redacted from errors.
 - External-command wrappers: must exit non-zero on provider error; Animus

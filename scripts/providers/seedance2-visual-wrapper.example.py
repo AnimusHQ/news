@@ -13,7 +13,9 @@
 #
 # Configure (wrapper-only env, never committed):
 #   ANIMUS_VISUAL_COMMAND=/abs/path/to/this/script
-#   SEEDANCE_API_KEY=sk_live_...        (required)
+#   ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1       (required for real calls)
+#   ANIMUS_VISUAL_OUTPUT_ROOT=/abs/path/to/episode-or-episodes-root
+#   SEEDANCE_API_KEY=<seedance-api-key>       (required)
 #   SEEDANCE_BASE_URL=https://api.seedance2.ai   (default)
 #   SEEDANCE_MODEL=seedance-2-0          (default)
 #   SEEDANCE_POLL_TIMEOUT=600            (seconds, default)
@@ -29,6 +31,25 @@ import urllib.request
 def fail(msg):
     print(f"seedance-wrapper: {msg}", file=sys.stderr)
     sys.exit(1)
+
+
+def require_live_guard():
+    if os.environ.get("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS") != "1":
+        fail("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1 is required for Seedance network calls")
+
+
+def contained_output_dir(path):
+    root = os.environ.get("ANIMUS_VISUAL_OUTPUT_ROOT", "").strip()
+    if not root:
+        fail("ANIMUS_VISUAL_OUTPUT_ROOT is not set")
+    out_real = os.path.realpath(path)
+    root_real = os.path.realpath(root)
+    try:
+        if os.path.commonpath([root_real, out_real]) != root_real:
+            fail("output_dir is outside ANIMUS_VISUAL_OUTPUT_ROOT")
+    except ValueError:
+        fail("output_dir is outside ANIMUS_VISUAL_OUTPUT_ROOT")
+    return out_real
 
 
 def api(method, url, key, body=None):
@@ -58,6 +79,7 @@ def download(url, out_path):
 
 
 def main():
+    require_live_guard()
     try:
         req = json.load(sys.stdin)
     except Exception as exc:  # noqa: BLE001 - example script
@@ -75,6 +97,7 @@ def main():
     shots_in = req.get("shots") or []
     if not episode_id or not output_dir or not shots_in:
         fail("request missing episode_id, output_dir, or shots")
+    output_dir = contained_output_dir(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     out_shots = []

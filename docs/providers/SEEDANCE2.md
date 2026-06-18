@@ -14,7 +14,7 @@ strategy and gate L2-G5).
 
 ## Documented API contract
 
-Auth: `Authorization: Bearer sk_live_xxx` (or `sk_test_xxx`). Base
+Auth: `Authorization: Bearer <seedance-api-key>`. Base
 `https://api.seedance2.ai`. **Asynchronous**: submit a task, then poll or receive
 a webhook, then download.
 
@@ -78,16 +78,20 @@ root are rejected (`TestExternalVisualPathTraversalRejected`).
 ## Configuration
 
 ```bash
+export EPISODE_ID=<episode-id>
+export EPISODE_DIR=/abs/path/episodes/${EPISODE_ID}
 export ANIMUS_VISUAL_COMMAND=/abs/path/scripts/providers/seedance2-visual-wrapper.example.py
-export ANIMUS_VISUAL_INPUT_ROOT=/abs/path/episodes/animus-oss-001
-export ANIMUS_VISUAL_OUTPUT_ROOT=/abs/path/episodes/animus-oss-001
+export ANIMUS_VISUAL_INPUT_ROOT="$EPISODE_DIR"
+export ANIMUS_VISUAL_OUTPUT_ROOT="$EPISODE_DIR"
 export ANIMUS_VISUAL_TIMEOUT=15m   # video generation is slow; raise as needed
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 # wrapper-only (never committed):
-export SEEDANCE_API_KEY=sk_live_...
+export SEEDANCE_API_KEY=<seedance-api-key>
 export SEEDANCE_BASE_URL=https://api.seedance2.ai
 ```
 
-Missing `ANIMUS_VISUAL_COMMAND`/roots → the pilot fails closed.
+Missing `ANIMUS_VISUAL_COMMAND`/roots or the live-call guard → the pilot or
+wrapper fails closed.
 
 ## Why native is deferred
 

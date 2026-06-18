@@ -8,7 +8,8 @@
 // the script-hash binding (see internal/shortform/pilot/review.go). It fails
 // closed when ANTHROPIC_API_KEY is unset, redacts the key from every error, and
 // performs no network I/O in tests when ANIMUS_CLAUDE_BASE_URL points at a fake
-// server.
+// server. Real environment-built clients also require
+// ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1 before network execution.
 //
 // The client uses the Go standard library rather than the official Anthropic
 // SDK on purpose: the repository enforces a no-new-dependencies invariant
@@ -87,8 +88,12 @@ func New(cfg Config) (*Client, error) {
 }
 
 // FromEnv builds a client from environment configuration. It fails closed when
-// ANTHROPIC_API_KEY is unset so generate-real never silently degrades.
+// live provider calls are not explicitly enabled or ANTHROPIC_API_KEY is unset,
+// so generate-real never silently degrades or spends.
 func FromEnv() (*Client, error) {
+	if strings.TrimSpace(os.Getenv("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS")) != "1" {
+		return nil, fmt.Errorf("claude api review requires ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1 for live provider calls")
+	}
 	key := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
 	if key == "" {
 		return nil, fmt.Errorf("claude api review requires ANTHROPIC_API_KEY; set it or use --claude-review manual")

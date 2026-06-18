@@ -25,6 +25,7 @@ The wire contract is faithful to the documented Messages API. See
 ## Configuration
 
 ```bash
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 export ANTHROPIC_API_KEY=...           # required; fails closed when unset
 export ANIMUS_CLAUDE_MODEL=claude-opus-4-8   # default
 export ANIMUS_CLAUDE_TIMEOUT=60s       # default
@@ -63,7 +64,7 @@ Script review:
 ```json
 {
   "schema_version": "1.0",
-  "episode_id": "animus-oss-001",
+  "episode_id": "<episode-id>",
   "verdict": "pass",
   "production_readiness": 85,
   "blocking_issues": [],
@@ -78,7 +79,7 @@ Final QA:
 ```json
 {
   "schema_version": "1.0",
-  "episode_id": "animus-oss-001",
+  "episode_id": "<episode-id>",
   "verdict": "pass",
   "production_readiness": 85,
   "blocking_issues": [],
@@ -98,7 +99,8 @@ hash check remains load-bearing and tested.)
 
 ## Failure and retry semantics
 
-- Missing `ANTHROPIC_API_KEY` → fails closed; no response file is written.
+- Missing `ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1` or `ANTHROPIC_API_KEY` → fails
+  closed; no response file is written.
 - 429 / 5xx / transport errors → retried (max 2, linear backoff).
 - 4xx (other than 429) and JSON-validation failures → **not** retried.
 - `stop_reason: "refusal"` → rejected with a clear error.
@@ -114,7 +116,7 @@ not re-bill. To force a fresh review, delete the response file.
 
 ```bash
 go run ./cmd/animus-news pilot generate-real ... --claude-review api ...
-go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot resume --episode-dir ./episodes/<episode-id>
 ```
 
 `--claude-review manual` (operator pastes Claude JSON, then

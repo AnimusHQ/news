@@ -18,10 +18,13 @@ curl -s "${CHATTERBOX_BASE_URL:-http://localhost:4123}/health"
 ## 2. Point Animus at the wrapper
 
 ```bash
+export EPISODE_ID=<episode-id>
+export EPISODE_DIR="$(pwd)/episodes/${EPISODE_ID}"
 export ANIMUS_VOICE_COMMAND="$(pwd)/scripts/providers/chatterbox-voice-wrapper.example.py"
-export ANIMUS_VOICE_INPUT_ROOT="$(pwd)/episodes/animus-oss-001"
-export ANIMUS_VOICE_OUTPUT_ROOT="$(pwd)/episodes/animus-oss-001"
+export ANIMUS_VOICE_INPUT_ROOT="$EPISODE_DIR"
+export ANIMUS_VOICE_OUTPUT_ROOT="$EPISODE_DIR"
 export ANIMUS_VOICE_TIMEOUT=10m
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 
 # wrapper-only env (never committed)
 export CHATTERBOX_BASE_URL=http://localhost:4123
@@ -35,16 +38,16 @@ chmod +x "$ANIMUS_VOICE_COMMAND"
 The wrapper reads the Animus voice request JSON on **stdin**:
 
 ```json
-{ "schema_version": "1.0", "episode_id": "animus-oss-001",
+{ "schema_version": "1.0", "episode_id": "<episode-id>",
   "language": "ru", "text": "Voiceover text...",
-  "output_dir": "/abs/.../episodes/animus-oss-001/audio" }
+  "output_dir": "/abs/.../episodes/<episode-id>/audio" }
 ```
 
 It writes a WAV into `output_dir` and prints the Animus voice response JSON on
 **stdout**:
 
 ```json
-{ "schema_version": "1.0", "episode_id": "animus-oss-001", "provider": "chatterbox",
+{ "schema_version": "1.0", "episode_id": "<episode-id>", "provider": "chatterbox",
   "output_path": "/abs/.../audio/voiceover.wav", "duration_sec": 44.7,
   "sample_rate": 24000, "voice_consent_reference": "consent-001" }
 ```
@@ -72,7 +75,7 @@ exactly what the default Go fake provider does in
 
 ```bash
 unset ANIMUS_VOICE_COMMAND
-go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot resume --episode-dir "$EPISODE_DIR"
 # -> error: voice provider external-command missing configuration: ANIMUS_VOICE_COMMAND
 ```
 

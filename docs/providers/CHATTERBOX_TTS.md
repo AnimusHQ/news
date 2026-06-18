@@ -50,15 +50,19 @@ the resulting `voiceover_manifest.json`.
 ## Configuration
 
 ```bash
+export EPISODE_ID=<episode-id>
+export EPISODE_DIR=/abs/path/episodes/${EPISODE_ID}
 export ANIMUS_VOICE_COMMAND=/abs/path/scripts/providers/chatterbox-voice-wrapper.example.py
-export ANIMUS_VOICE_INPUT_ROOT=/abs/path/episodes/animus-oss-001
-export ANIMUS_VOICE_OUTPUT_ROOT=/abs/path/episodes/animus-oss-001
+export ANIMUS_VOICE_INPUT_ROOT="$EPISODE_DIR"
+export ANIMUS_VOICE_OUTPUT_ROOT="$EPISODE_DIR"
 export ANIMUS_VOICE_TIMEOUT=10m
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 # wrapper-only (never committed):
 export CHATTERBOX_BASE_URL=http://localhost:4123
 ```
 
-Missing `ANIMUS_VOICE_COMMAND`/roots → the pilot fails closed.
+Missing `ANIMUS_VOICE_COMMAND`/roots or the live-call guard → the pilot or
+wrapper fails closed.
 
 ## Voice cloning & consent
 

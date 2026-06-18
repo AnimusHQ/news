@@ -12,7 +12,9 @@
 #
 # Configure (wrapper-only env, never committed):
 #   ANIMUS_VOICE_COMMAND=/abs/path/to/this/script
-#   CHATTERBOX_BASE_URL=http://localhost:4123   (default)
+#   ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1       (required for real calls)
+#   ANIMUS_VOICE_OUTPUT_ROOT=/abs/path/to/episode-or-episodes-root
+#   CHATTERBOX_BASE_URL=http://localhost:4123   (required)
 #   CHATTERBOX_VOICE=<voice name>               (optional)
 #   CHATTERBOX_VOICE_CONSENT_REFERENCE=<id>     (required if cloning a voice)
 
@@ -29,6 +31,25 @@ def fail(msg):
     sys.exit(1)
 
 
+def require_live_guard():
+    if os.environ.get("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS") != "1":
+        fail("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1 is required for Chatterbox network calls")
+
+
+def contained_output_dir(path):
+    root = os.environ.get("ANIMUS_VOICE_OUTPUT_ROOT", "").strip()
+    if not root:
+        fail("ANIMUS_VOICE_OUTPUT_ROOT is not set")
+    out_real = os.path.realpath(path)
+    root_real = os.path.realpath(root)
+    try:
+        if os.path.commonpath([root_real, out_real]) != root_real:
+            fail("output_dir is outside ANIMUS_VOICE_OUTPUT_ROOT")
+    except ValueError:
+        fail("output_dir is outside ANIMUS_VOICE_OUTPUT_ROOT")
+    return out_real
+
+
 def wav_info(path):
     try:
         with wave.open(path, "rb") as w:
@@ -40,6 +61,7 @@ def wav_info(path):
 
 
 def main():
+    require_live_guard()
     try:
         req = json.load(sys.stdin)
     except Exception as exc:  # noqa: BLE001 - example script
@@ -50,8 +72,11 @@ def main():
     output_dir = req.get("output_dir")
     if not episode_id or not output_dir or not text:
         fail("request missing episode_id, text, or output_dir")
+    output_dir = contained_output_dir(output_dir)
 
-    base = os.environ.get("CHATTERBOX_BASE_URL", "http://localhost:4123").rstrip("/")
+    base = os.environ.get("CHATTERBOX_BASE_URL", "").strip().rstrip("/")
+    if not base:
+        fail("CHATTERBOX_BASE_URL is not set")
     os.makedirs(output_dir, exist_ok=True)
     out_path = os.path.join(output_dir, "voiceover.wav")
 
@@ -66,6 +91,9 @@ def main():
         headers={"content-type": "application/json"},
         method="POST",
     )
+    key = os.environ.get("CHATTERBOX_API_KEY", "").strip()
+    if key:
+        http_req.add_header("authorization", "Bearer " + key)
     try:
         with urllib.request.urlopen(http_req, timeout=600) as resp:
             audio = resp.read()
