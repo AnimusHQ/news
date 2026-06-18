@@ -118,14 +118,20 @@ go test ./...      # all unit/integration tests (no network, no secrets)
 # CLI
 go run ./cmd/animus-news demo --episode episode-0001 --expect terminal
 go run ./cmd/animus-news validate-shortform <artifact>.json
-go run ./cmd/animus-news pilot generate-real --episode-id animus-oss-001 --prompt "..." --language ru --duration 45s --platforms tiktok,instagram,youtube --visual-provider external-command --voice-provider external-command --subtitle-provider faster-whisper --render-provider ffmpeg --claude-review manual --out ./episodes/animus-oss-001
-go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
-go run ./cmd/animus-news pilot status --episode-dir ./episodes/animus-oss-001
-go run ./cmd/animus-news pilot validate --episode-dir ./episodes/animus-oss-001
+export EPISODE_ID=<episode-id>
+export PROMPT='<runtime prompt>'
+export LANGUAGE=ru
+export DURATION=45s
+export PLATFORMS=tiktok
+export EPISODE_DIR="./episodes/${EPISODE_ID}"
+go run ./cmd/animus-news pilot generate-real --episode-id "$EPISODE_ID" --prompt "$PROMPT" --language "$LANGUAGE" --duration "$DURATION" --platforms "$PLATFORMS" --visual-provider external-command --voice-provider external-command --subtitle-provider faster-whisper --render-provider ffmpeg --claude-review manual --out "$EPISODE_DIR"
+go run ./cmd/animus-news pilot resume --episode-dir "$EPISODE_DIR"
+go run ./cmd/animus-news pilot status --episode-dir "$EPISODE_DIR"
+go run ./cmd/animus-news pilot validate --episode-dir "$EPISODE_DIR"
 make verify-real-pilot
 make verify-l2-providers # L2 provider checks: fake HTTP + fake external-command, no real calls
 
-# L2: automated Claude review (fails closed without ANTHROPIC_API_KEY)
+# L2: automated Claude review (fails closed without live-call guard + ANTHROPIC_API_KEY)
 go run ./cmd/animus-news pilot generate-real ... --claude-review api ...
 ```
 

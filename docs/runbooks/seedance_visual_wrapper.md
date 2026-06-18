@@ -14,13 +14,16 @@ the repository.
 ## 2. Point Animus at the wrapper
 
 ```bash
+export EPISODE_ID=<episode-id>
+export EPISODE_DIR="$(pwd)/episodes/${EPISODE_ID}"
 export ANIMUS_VISUAL_COMMAND="$(pwd)/scripts/providers/seedance2-visual-wrapper.example.py"
-export ANIMUS_VISUAL_INPUT_ROOT="$(pwd)/episodes/animus-oss-001"
-export ANIMUS_VISUAL_OUTPUT_ROOT="$(pwd)/episodes/animus-oss-001"
+export ANIMUS_VISUAL_INPUT_ROOT="$EPISODE_DIR"
+export ANIMUS_VISUAL_OUTPUT_ROOT="$EPISODE_DIR"
 export ANIMUS_VISUAL_TIMEOUT=15m    # video generation is slow
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 
 # wrapper-only env (never committed)
-export SEEDANCE_API_KEY=sk_live_...
+export SEEDANCE_API_KEY=<seedance-api-key>
 export SEEDANCE_BASE_URL=https://api.seedance2.ai
 export SEEDANCE_MODEL=seedance-2-0
 export SEEDANCE_POLL_TIMEOUT=600
@@ -41,7 +44,7 @@ shot with `shot_id`, `prompt`, `negative_prompt`, `duration_sec`, `width`,
 It prints the Animus visual response JSON on **stdout**:
 
 ```json
-{ "schema_version": "1.0", "episode_id": "animus-oss-001", "provider": "seedance2",
+{ "schema_version": "1.0", "episode_id": "<episode-id>", "provider": "seedance2",
   "shots": [ { "shot_id": "shot-001", "status": "generated",
     "output_path": "/abs/.../visual/shot-001.mp4",
     "duration_sec": 5, "width": 1080, "height": 1920, "fps": 30 } ] }
@@ -71,7 +74,7 @@ After the wrapper returns, Animus independently:
 
 ```bash
 unset ANIMUS_VISUAL_COMMAND
-go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot resume --episode-dir "$EPISODE_DIR"
 # -> error: visual provider external-command missing configuration: ANIMUS_VISUAL_COMMAND
 ```
 
@@ -81,5 +84,5 @@ go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
 - **`expected 3` shot mismatch** → the wrapper dropped a shot; return all.
 - **`invalid properties`** → Seedance produced non-1080x1920/30; fix the request.
 - **Expired CDN URL** → download immediately after `completed`.
-- **Spend** → Seedance charges credits on success; test with `sk_test_` and a
+- **Spend** → Seedance charges credits on success; test with a sandbox key and a
   single short shot first.

@@ -145,9 +145,18 @@ func TestReviewRejectsRefusal(t *testing.T) {
 }
 
 func TestFromEnvMissingKeyFailsClosed(t *testing.T) {
+	t.Setenv("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS", "1")
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	if _, err := FromEnv(); err == nil || !strings.Contains(err.Error(), "ANTHROPIC_API_KEY") {
 		t.Fatalf("expected fail-closed on missing key, got %v", err)
+	}
+}
+
+func TestFromEnvRequiresLiveCallGuard(t *testing.T) {
+	t.Setenv("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "animus-fake-pilot-credential-0001")
+	if _, err := FromEnv(); err == nil || !strings.Contains(err.Error(), "ANIMUS_ALLOW_LIVE_PROVIDER_CALLS") {
+		t.Fatalf("expected fail-closed on missing live-call guard, got %v", err)
 	}
 }
 

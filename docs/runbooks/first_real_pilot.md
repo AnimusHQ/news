@@ -27,6 +27,17 @@ make verify-l2-providers
 
 ## 3. Configure Claude review
 
+Define runtime content in shell variables. Do not put these in `.env`:
+
+```bash
+export EPISODE_ID=<episode-id>
+export PROMPT='<operator-provided prompt>'
+export LANGUAGE=ru
+export DURATION=45s
+export PLATFORMS=tiktok,instagram,youtube
+export EPISODE_DIR="$(pwd)/episodes/${EPISODE_ID}"
+```
+
 API mode (automated):
 
 ```bash
@@ -42,9 +53,10 @@ JSON and import it).
 ```bash
 # start your Chatterbox server, then:
 export ANIMUS_VOICE_COMMAND="$(pwd)/scripts/providers/chatterbox-voice-wrapper.example.py"
-export ANIMUS_VOICE_INPUT_ROOT="$(pwd)/episodes/animus-oss-001"
-export ANIMUS_VOICE_OUTPUT_ROOT="$(pwd)/episodes/animus-oss-001"
+export ANIMUS_VOICE_INPUT_ROOT="$EPISODE_DIR"
+export ANIMUS_VOICE_OUTPUT_ROOT="$EPISODE_DIR"
 export ANIMUS_VOICE_TIMEOUT=10m
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
 export CHATTERBOX_BASE_URL=http://localhost:4123
 ```
 
@@ -54,10 +66,11 @@ See `docs/runbooks/chatterbox_voice_wrapper.md`.
 
 ```bash
 export ANIMUS_VISUAL_COMMAND="$(pwd)/scripts/providers/seedance2-visual-wrapper.example.py"
-export ANIMUS_VISUAL_INPUT_ROOT="$(pwd)/episodes/animus-oss-001"
-export ANIMUS_VISUAL_OUTPUT_ROOT="$(pwd)/episodes/animus-oss-001"
+export ANIMUS_VISUAL_INPUT_ROOT="$EPISODE_DIR"
+export ANIMUS_VISUAL_OUTPUT_ROOT="$EPISODE_DIR"
 export ANIMUS_VISUAL_TIMEOUT=15m
-export SEEDANCE_API_KEY=sk_live_...
+export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
+export SEEDANCE_API_KEY=<seedance-api-key>
 ```
 
 See `docs/runbooks/seedance_visual_wrapper.md`.
@@ -66,8 +79,8 @@ See `docs/runbooks/seedance_visual_wrapper.md`.
 
 ```bash
 export ANIMUS_FASTER_WHISPER_COMMAND=/abs/path/to/faster-whisper-wrapper
-export ANIMUS_FASTER_WHISPER_INPUT_ROOT="$(pwd)/episodes/animus-oss-001"
-export ANIMUS_FASTER_WHISPER_OUTPUT_ROOT="$(pwd)/episodes/animus-oss-001"
+export ANIMUS_FASTER_WHISPER_INPUT_ROOT="$EPISODE_DIR"
+export ANIMUS_FASTER_WHISPER_OUTPUT_ROOT="$EPISODE_DIR"
 export ANIMUS_FASTER_WHISPER_TIMEOUT=10m
 # Or skip subtitles transcription with --subtitle-provider script-timing.
 ```
@@ -76,17 +89,17 @@ export ANIMUS_FASTER_WHISPER_TIMEOUT=10m
 
 ```bash
 go run ./cmd/animus-news pilot generate-real \
-  --episode-id animus-oss-001 \
-  --prompt "<your prompt>" \
-  --language ru \
-  --duration 45s \
-  --platforms tiktok,instagram,youtube \
+  --episode-id "$EPISODE_ID" \
+  --prompt "$PROMPT" \
+  --language "$LANGUAGE" \
+  --duration "$DURATION" \
+  --platforms "$PLATFORMS" \
   --visual-provider external-command \
   --voice-provider external-command \
   --subtitle-provider faster-whisper \
   --render-provider ffmpeg \
   --claude-review api \
-  --out ./episodes/animus-oss-001
+  --out "$EPISODE_DIR"
 ```
 
 With `--claude-review api`, the script review is requested automatically and the
@@ -96,8 +109,8 @@ script checkpoint.
 ## 8. If script review blocks, inspect and revise
 
 ```bash
-go run ./cmd/animus-news pilot status --episode-dir ./episodes/animus-oss-001
-cat ./episodes/animus-oss-001/claude_script_review_response.json
+go run ./cmd/animus-news pilot status --episode-dir "$EPISODE_DIR"
+cat "$EPISODE_DIR/claude_script_review_response.json"
 ```
 
 A `fail` verdict or blocking issues stop the run. Revise `script.md`, delete the
@@ -109,7 +122,7 @@ then `pilot import-claude-review --kind script --file <json>`.)
 ## 9. Resume after script review
 
 ```bash
-go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot resume --episode-dir "$EPISODE_DIR"
 ```
 
 ## 10. Generate visuals
@@ -131,7 +144,7 @@ faster-whisper (or the explicit `script-timing` fallback) produces
 
 ## 13. Render release candidate
 
-FFmpeg renders `dist/animus-oss-001-release-candidate.mp4`; ffprobe validates the
+FFmpeg renders `dist/${EPISODE_ID}-release-candidate.mp4`; ffprobe validates the
 geometry and that audio + burned captions are present
 (`short_render_manifest.json`).
 
@@ -142,15 +155,15 @@ send `final_review_request.md` to Claude, save the JSON, then:
 
 ```bash
 go run ./cmd/animus-news pilot import-claude-review \
-  --episode-dir ./episodes/animus-oss-001 --kind final --file <json>
-go run ./cmd/animus-news pilot resume --episode-dir ./episodes/animus-oss-001
+  --episode-dir "$EPISODE_DIR" --kind final --file <json>
+go run ./cmd/animus-news pilot resume --episode-dir "$EPISODE_DIR"
 ```
 
 ## 15. Validate the release candidate
 
 ```bash
-go run ./cmd/animus-news pilot status   --episode-dir ./episodes/animus-oss-001
-go run ./cmd/animus-news pilot validate --episode-dir ./episodes/animus-oss-001
+go run ./cmd/animus-news pilot status   --episode-dir "$EPISODE_DIR"
+go run ./cmd/animus-news pilot validate --episode-dir "$EPISODE_DIR"
 ```
 
 `validate` checks artifact presence, hashes, containment, render properties,

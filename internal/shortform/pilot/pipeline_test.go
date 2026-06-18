@@ -117,7 +117,7 @@ func TestFullFakeExternalPilotProducesReleaseCandidateAfterFinalClaudeReview(t *
 	if res.Stage != StageClaudeFinalReview || res.Ready {
 		t.Fatalf("expected final Claude checkpoint before readiness, got %+v", res)
 	}
-	releasePath := filepath.Join(dir, "dist", "animus-test-001-release-candidate.mp4")
+	releasePath := filepath.Join(dir, "dist", "episode-test-001-release-candidate.mp4")
 	info, err := os.Stat(releasePath)
 	if err != nil {
 		t.Fatalf("release candidate missing: %v", err)
@@ -132,7 +132,7 @@ func TestFullFakeExternalPilotProducesReleaseCandidateAfterFinalClaudeReview(t *
 
 	final := ClaudeReviewResponse{
 		SchemaVersion:       SchemaVersion,
-		EpisodeID:           "animus-test-001",
+		EpisodeID:           "episode-test-001",
 		Verdict:             "pass",
 		ProductionReadiness: 88,
 		BlockingIssues:      []string{},
@@ -177,12 +177,12 @@ func TestExternalVisualPathTraversalRejected(t *testing.T) {
 	episodeDir := t.TempDir()
 	requests := VisualShotRequests{
 		SchemaVersion: SchemaVersion,
-		EpisodeID:     "animus-test-001",
+		EpisodeID:     "episode-test-001",
 		Shots:         []VisualShotRequest{{ShotID: "shot-001"}},
 	}
 	response := ExternalVisualResponse{
 		SchemaVersion: SchemaVersion,
-		EpisodeID:     "animus-test-001",
+		EpisodeID:     "episode-test-001",
 		Provider:      "seedance-wrapper",
 		Shots: []ExternalVisualOutput{{
 			ShotID:     "shot-001",
@@ -242,6 +242,7 @@ func TestClaudeReviewAPIRejectedByValidation(t *testing.T) {
 }
 
 func TestClaudeAPIReviewMissingKeyFailsClosed(t *testing.T) {
+	t.Setenv("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS", "1")
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	dir := filepath.Join(t.TempDir(), "episode")
 	// No injected ReviewClient -> builds from env -> must fail closed.
@@ -254,13 +255,26 @@ func TestClaudeAPIReviewMissingKeyFailsClosed(t *testing.T) {
 	}
 }
 
+func TestClaudeAPIReviewRequiresLiveCallGuard(t *testing.T) {
+	t.Setenv("ANIMUS_ALLOW_LIVE_PROVIDER_CALLS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "animus-fake-pilot-credential-0001")
+	dir := filepath.Join(t.TempDir(), "episode")
+	_, err := testRunner().GenerateReal(context.Background(), apiGenerateRequest(dir))
+	if err == nil || !strings.Contains(err.Error(), "ANIMUS_ALLOW_LIVE_PROVIDER_CALLS") {
+		t.Fatalf("expected fail-closed on missing live-call guard, got %v", err)
+	}
+	if fileExists(filepath.Join(dir, "claude_script_review_response.json")) {
+		t.Fatal("no review response should be written without live-call guard")
+	}
+}
+
 func TestClaudeAPIScriptReviewPassesAndBindsScriptHash(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "episode")
 	fake := &fakeReviewClient{responses: map[string]json.RawMessage{
 		// approved_script_hash deliberately wrong: the pilot must rebind it.
 		"script": reviewJSON(t, map[string]any{
 			"schema_version":                    "1.0",
-			"episode_id":                        "animus-test-001",
+			"episode_id":                        "episode-test-001",
 			"verdict":                           "pass",
 			"production_readiness":              88,
 			"blocking_issues":                   []string{},
@@ -294,7 +308,7 @@ func TestClaudeAPIScriptReviewFailVerdictBlocksAtGate(t *testing.T) {
 	fake := &fakeReviewClient{responses: map[string]json.RawMessage{
 		"script": reviewJSON(t, map[string]any{
 			"schema_version":                    "1.0",
-			"episode_id":                        "animus-test-001",
+			"episode_id":                        "episode-test-001",
 			"verdict":                           "fail",
 			"production_readiness":              40,
 			"blocking_issues":                   []string{"unsupported factual claim"},
@@ -316,12 +330,12 @@ func TestClaudeAPIFinalReviewWritesValidatedResponse(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "episode")
 	fake := &fakeReviewClient{responses: map[string]json.RawMessage{
 		"script": reviewJSON(t, map[string]any{
-			"schema_version": "1.0", "episode_id": "animus-test-001", "verdict": "pass",
+			"schema_version": "1.0", "episode_id": "episode-test-001", "verdict": "pass",
 			"production_readiness": 88, "blocking_issues": []string{}, "suggested_revisions": []string{},
 			"can_continue_to_visual_generation": true,
 		}),
 		"final": reviewJSON(t, map[string]any{
-			"schema_version": "1.0", "episode_id": "animus-test-001", "verdict": "pass",
+			"schema_version": "1.0", "episode_id": "episode-test-001", "verdict": "pass",
 			"production_readiness": 90, "blocking_issues": []string{}, "suggested_revisions": []string{},
 			"can_release_candidate": true,
 		}),
@@ -331,7 +345,7 @@ func TestClaudeAPIFinalReviewWritesValidatedResponse(t *testing.T) {
 
 	// Exercise the final-review step directly (reaching it organically needs
 	// ffmpeg + media providers). The request file is what the pipeline writes.
-	if err := writeText(filepath.Join(dir, "final_review_request.md"), "# Claude Final Review Request\nepisode animus-test-001"); err != nil {
+	if err := writeText(filepath.Join(dir, "final_review_request.md"), "# Claude Final Review Request\nepisode episode-test-001"); err != nil {
 		t.Fatal(err)
 	}
 	manifest, err := loadEpisodeManifest(dir)
@@ -348,8 +362,8 @@ func TestClaudeAPIFinalReviewWritesValidatedResponse(t *testing.T) {
 
 func testGenerateRequest(dir string) GenerateRequest {
 	return GenerateRequest{
-		EpisodeID:        "animus-test-001",
-		Prompt:           "Объясни, почему open-source разработчикам нужна устойчивая экосистема",
+		EpisodeID:        "episode-test-001",
+		Prompt:           "Explain the runtime-provided subject without adding a fixed theme",
 		Language:         "ru",
 		Duration:         "3s",
 		Platforms:        []string{"tiktok", "instagram", "youtube"},
@@ -390,7 +404,7 @@ func scriptReview(t *testing.T, dir string) ClaudeReviewResponse {
 	}
 	return ClaudeReviewResponse{
 		SchemaVersion:                 SchemaVersion,
-		EpisodeID:                     "animus-test-001",
+		EpisodeID:                     "episode-test-001",
 		Verdict:                       "pass",
 		ProductionReadiness:           86,
 		BlockingIssues:                []string{},
