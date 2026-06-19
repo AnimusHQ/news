@@ -43,8 +43,8 @@ func TestProductionQADependsOnRenderQuality(t *testing.T) {
 	// Healthy render -> approved.
 	good := NewMockActivities()
 	sb, _ := good.ImportStoryboardImages(ctx, ImportStoryboardInput{EpisodeID: "e", Now: aNow, Operator: "op", Scenes: scenes()})
-	shots, _ := good.GenerateMockVisualShots(ctx, VisualShotsInput{EpisodeID: "e", Now: aNow, Storyboard: sb})
-	vo, _ := good.GenerateElevenLabsVoiceover(ctx, VoiceoverInput{EpisodeID: "e", Now: aNow, ScriptRef: "s"})
+	shots, _ := good.GenerateVisualShotsMock(ctx, VisualShotsInput{EpisodeID: "e", Now: aNow, Storyboard: sb})
+	vo, _ := good.GenerateVoiceover(ctx, VoiceoverInput{EpisodeID: "e", Now: aNow, ScriptRef: "s"})
 	subs, _ := good.GenerateSubtitles(ctx, SubtitlesInput{EpisodeID: "e", Now: aNow, Voiceover: vo})
 	render, _ := good.RenderShortFinal(ctx, RenderInput{EpisodeID: "e", Now: aNow, Shots: shots, Voiceover: vo, Subtitles: subs})
 	qa, _ := good.RunProductionQA(ctx, render)
@@ -64,18 +64,18 @@ func TestProductionQADependsOnRenderQuality(t *testing.T) {
 func TestDeferredActivitiesNeverRunInM1(t *testing.T) {
 	ctx := context.Background()
 	a := NewMockActivities()
-	if _, err := a.GenerateSeedanceShots(ctx, VisualShotsInput{}); err == nil {
-		t.Fatal("GenerateSeedanceShots must be disabled in M1")
+	if _, err := a.GenerateVisualShotsReal(ctx, VisualShotsInput{}); err == nil {
+		t.Fatal("GenerateVisualShotsReal must be disabled in M1")
 	}
-	if err := a.UploadPostSchedulePublish(ctx, nil); err == nil {
-		t.Fatal("UploadPostSchedulePublish must be disabled in M1")
+	if err := a.PublishSchedule(ctx, nil); err == nil {
+		t.Fatal("PublishSchedule must be disabled in M1")
 	}
 }
 
-func TestUploadPostDryRunRefusesNonDryRunMode(t *testing.T) {
+func TestPublishDryRunRefusesNonDryRunMode(t *testing.T) {
 	ctx := context.Background()
 	a := NewMockActivities()
-	res, err := a.UploadPostDryRun(ctx, nil)
+	res, err := a.PublishDryRun(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

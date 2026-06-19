@@ -169,7 +169,7 @@ func (r *run) execute(ctx context.Context) error {
 	}
 
 	// Visual shots.
-	shots, err := r.acts.GenerateMockVisualShots(ctx, activities.VisualShotsInput{EpisodeID: r.cfg.EpisodeID, Now: r.clock, Storyboard: storyboard})
+	shots, err := r.acts.GenerateVisualShotsMock(ctx, activities.VisualShotsInput{EpisodeID: r.cfg.EpisodeID, Now: r.clock, Storyboard: storyboard})
 	if err != nil {
 		return r.fail("visual_shots_failed", err)
 	}
@@ -182,7 +182,7 @@ func (r *run) execute(ctx context.Context) error {
 	}
 
 	// Voiceover.
-	voiceover, err := r.acts.GenerateElevenLabsVoiceover(ctx, activities.VoiceoverInput{EpisodeID: r.cfg.EpisodeID, Now: r.clock, ScriptRef: "script.md", Language: "en"})
+	voiceover, err := r.acts.GenerateVoiceover(ctx, activities.VoiceoverInput{EpisodeID: r.cfg.EpisodeID, Now: r.clock, ScriptRef: "script.md", Language: "en"})
 	if err != nil {
 		return r.fail("voiceover_failed", err)
 	}
@@ -257,7 +257,7 @@ func (r *run) execute(ctx context.Context) error {
 	}
 
 	// Guarded publish manifest + dry-run + release gate.
-	publish, err := r.acts.GenerateUploadPostPublishManifest(ctx, activities.PublishManifestInput{
+	publish, err := r.acts.GeneratePublishManifest(ctx, activities.PublishManifestInput{
 		EpisodeID: r.cfg.EpisodeID, Now: r.clock, Release: release, Render: render,
 		ProductionQADecision: qa.Decision, ProductionQARef: "production_qa_report.json",
 	})
@@ -265,7 +265,7 @@ func (r *run) execute(ctx context.Context) error {
 		return r.fail("publish_manifest_failed", err)
 	}
 	r.persist(publish)
-	dryRun, err := r.acts.UploadPostDryRun(ctx, publish)
+	dryRun, err := r.acts.PublishDryRun(ctx, publish)
 	if err != nil {
 		return r.fail("dry_run_failed", err)
 	}
@@ -275,7 +275,7 @@ func (r *run) execute(ctx context.Context) error {
 	}
 
 	r.res.State = "published_dry_run_complete"
-	r.note("guarded upload-post dry-run complete (no upload performed)")
+	r.note("guarded publishing dry-run complete (no upload performed)")
 	r.audit(audit.CategoryStateTransition, "system", "published_dry_run_complete", "terminal state reached")
 	return nil
 }

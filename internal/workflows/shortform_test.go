@@ -190,7 +190,7 @@ func TestShortFormWorkflowDeterministicResultFixture(t *testing.T) {
 		t.Fatalf("unexpected workflow error: %v", err)
 	}
 	got := deterministicResultHash(t, res)
-	const expected = "sha256:522c6ed1123a8c2530945b45f0950aa75ae8b69d68b3a29bd6a1a6bd87dc76ef"
+	const expected = "sha256:c156bd41165b5e378777b9c606ea821c64edf9beea1e415e83ddc5d2a72ad31b"
 	if got != expected {
 		t.Fatalf("deterministic workflow fixture hash changed: got %s want %s\n%s", got, expected, deterministicResultJSON(t, res))
 	}
