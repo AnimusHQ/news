@@ -1,83 +1,101 @@
-# Animus News
+# Animus Media Engine
 
-Animus News is a source-grounded, multimodel, **artifact-driven control plane**
-for educational IT media — a "content compiler", not a shallow AI content
-generator. Every pipeline stage emits a typed, schema-validated, content-hashed
-artifact, and every quality/release decision is a **code-enforced gate**, not a
-model instruction. Source provenance, multimodel verification, human QA,
-production safety, durable workflow orchestration, and auditable release gates
-are first-class.
+Animus Media Engine is a source-grounded, multi-agent, artifact-driven production system for strategy-aware AI media generation.
 
-This is the project repository for Animus News. Organization-wide GitHub
-defaults (community profile, baseline policies) belong in the `AnimusHQ/.github`
-repository, not here.
+The repository is currently named `AnimusHQ/news` because the first product slice is short-form Animus News, but the target is broader: a production-grade AI media operating system that can generate verified short-form release candidates today and evolve toward cinematic and film-scale production later.
+
+It is not a prompt-to-video toy, a single-provider wrapper, or a generate-to-publish content farm. It is a media production control plane: every important stage emits typed artifacts, every provider output is untrusted until validated, and every release decision passes explicit gates.
+
+## Current product framing
+
+The system transforms a runtime creative task into a validated production artifact set:
+
+```text
+Task / campaign goal / creative objective
+  -> platform analysis
+  -> audience strategy
+  -> competitive/reference analysis
+  -> creative direction
+  -> research and source state
+  -> script
+  -> verification
+  -> multi-agent critique
+  -> human QA
+  -> storyboard and shot plan
+  -> OTIO timeline
+  -> visual generation
+  -> voice generation
+  -> subtitles
+  -> render
+  -> production QA
+  -> release candidate
+  -> human release gate
+  -> publishing and analytics later
+```
+
+The immediate observable output for the MVP lane is:
+
+```text
+episodes/<episode-id>/dist/<episode-id>-release-candidate.mp4
+```
+
+The production output is broader: typed artifacts, hashes, provenance, agent/model decisions, media object references, timelines, QA reports, and release decisions.
 
 ## Status
 
-Animus News is a **pre-production scaffold**, not a running production media
-platform. It is safe-by-default: **no real provider calls, no credentials, no
-spend, no uploads, and no public publishing**.
+The repository is a **pre-production production foundation**, not a public media platform. It is safe-by-default: no real provider calls, no credentials, no spend, no uploads, and no public publishing occur in CI or default local verification.
 
-- The **short-form video integration (milestones M1–L2)** runs **end-to-end on
-  mock / fail-closed providers**: typed contracts, schema validation, content
-  gates, the durable `ShortFormWorkflow`, and an in-process demo runner. Real
-  provider lanes (FFmpeg render, faster-whisper, Upload-Post dry-run, DaVinci
-  MCP, OmniVoice, Claude review, external-command visual/voice) exist as
-  **opt-in, disabled-by-default boundaries** that fail closed when not
-  configured. No live calls, spend, or secrets occur in the repo or CI.
-- On the Level 0–6 launch-readiness ladder in
-  [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md), the system sits
-  around **Level 3 (Temporal Local Ready), with Level 4 (Provider Sandbox)
-  partially implemented**. Levels 5–6 (private and public production) are future
-  work. See that document for the authoritative, per-level status.
+Completed checkpoints:
 
-For honest, code-backed status by feature, treat
-[`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md) and the milestone
-reports under `docs/reports/` as the source of truth — not this summary.
+- **M1-M3**: typed contracts, validators, gates, mock providers, Temporal skeleton, local execution boundaries, provider registry, replay hardening, DaVinci/OmniVoice boundaries.
+- **L1-L2**: real CLI pilot framework, native Claude API review lane, external-command Seedance/Chatterbox lanes, FFmpeg render path, provider docs and runbooks.
+- **CFG-001**: provider configuration is content-agnostic. Runtime content is not stored in `.env`; environment files contain provider/service configuration only.
+- **MVP-Docker-001**: local MVP runtime is containerized. Docker Compose starts Chatterbox and provides stable FFmpeg/ffprobe, Python, Go, wrapper paths, and episode roots.
+
+Immediate next checkpoints:
+
+1. **MVP-001 Live Smoke**: from clean clone + `.env.mvp.local` + Docker Compose, produce `episodes/mvp-smoke-001/dist/mvp-smoke-001-release-candidate.mp4` or a precise blocker.
+2. **MVP-001 Full Live**: produce `episodes/mvp-001/dist/mvp-001-release-candidate.mp4` or a precise blocker.
+3. **PLATFORM-001**: local production platform foundation with Docker-bootstrapped Postgres, Temporal, MinIO, Keycloak, Animus API, Animus worker, model router, OTIO timeline layer, and multi-agent execution boundaries.
 
 ## Non-goals
 
-- Not a generate→publish AI content farm. There is no shortcut from generation
-  to publishing; the only publish path is
-  `release_approval → publish_manifest → validate → dry-run → release gate`.
-- No public publishing, scheduled upload, browser automation, or social upload.
-- No real provider spend, no live API calls, no secrets in the repository or CI.
-- No single model is a final authority; nothing self-approves.
-- Not TypeScript-first: Go + Temporal + Postgres + S3 is the canonical stack
-  (TypeScript is reserved for console/Remotion/UI only — see `AGENTS.md`).
+- No shortcut from generation to public publishing.
+- No public publishing, scheduled public upload, browser automation, or social upload until an explicit release milestone enables it.
+- No real provider spend, live API calls, or secrets in CI.
+- No single model is a final authority; generated output does not self-approve.
+- No hardcoded topic, style, platform, voice, duration, or creative format.
+- No provider-specific code path may bypass the model router or validation gates.
+- No TypeScript-first backend: Go + Temporal + Postgres + S3-compatible object storage is the canonical stack. TypeScript is reserved for console, review room, Remotion, and UI surfaces.
 
-## Quickstart
+## Local verification
 
-All commands are offline and require no credentials.
+Offline verification requires no credentials:
 
 ```bash
-make verify        # single green/red signal: fmt + build + vet + test + scan + schema + e2e demo
-make demo          # short-form mock demo, success path
-make demo-blocked  # short-form mock demo with an injected gate failure
-
-go test ./...      # all unit/integration tests (no network, no secrets)
-
-# CLI (mock/demo)
-go run ./cmd/animus-news demo --episode episode-0001 --expect terminal
-go run ./cmd/animus-news validate-shortform <artifact>.json
+make verify
+make verify-real-pilot
+make verify-m2-local
+make verify-m3
+make verify-l2-providers
+make verify-mvp-docker
+go vet ./...
+go test ./...
 ```
 
-The real CLI pilot (release-candidate MP4 via manual review checkpoints and
-opt-in provider boundaries) is documented in
-[`docs/REAL_PILOT_V1.md`](docs/REAL_PILOT_V1.md); its commands and configuration
-are in [`CLAUDE.md`](CLAUDE.md).
+MVP Docker runtime is documented in [`docs/runbooks/mvp_docker_runtime.md`](docs/runbooks/mvp_docker_runtime.md).
 
 ## Documentation
 
-- [`docs/SYSTEM_BLUEPRINT.md`](docs/SYSTEM_BLUEPRINT.md) — target system design.
-- [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md) — authoritative
-  readiness levels and safety posture.
-- [`docs/WORKFLOW_FINAL.md`](docs/WORKFLOW_FINAL.md) — the final workflow model.
+- [`docs/PLATFORM_FOUNDATION.md`](docs/PLATFORM_FOUNDATION.md) — current north star and PLATFORM-001 scope.
+- [`docs/SYSTEM_BLUEPRINT.md`](docs/SYSTEM_BLUEPRINT.md) — target system design and artifact-first architecture.
+- [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md) — readiness levels, current status, and blockers.
+- [`docs/WORKFLOW_FINAL.md`](docs/WORKFLOW_FINAL.md) — current MVP workflow and target production workflow.
+- [`docs/PRODUCTION_DEPLOYMENT.md`](docs/PRODUCTION_DEPLOYMENT.md) — provider and platform deployment boundaries.
+- [`docs/runbooks/mvp_docker_runtime.md`](docs/runbooks/mvp_docker_runtime.md) — MVP Docker smoke/full local operator flow.
 - [`AGENTS.md`](AGENTS.md) — canonical stack and repository-wide rules.
-- [`CLAUDE.md`](CLAUDE.md) — short-form integration rules and CLI usage.
+- [`CLAUDE.md`](CLAUDE.md) — current short-form integration rules and CLI usage.
 
 ## License
 
-Proprietary. © Animus. All rights reserved. See [`LICENSE`](LICENSE). The public
-visibility of this repository grants no license to use, copy, modify, or
-distribute the software.
+Proprietary. © Animus. All rights reserved. See [`LICENSE`](LICENSE). The public visibility of this repository grants no license to use, copy, modify, or distribute the software.
