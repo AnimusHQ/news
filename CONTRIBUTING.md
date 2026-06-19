@@ -1,67 +1,41 @@
-# Contributing to AnimusHQ
+# Contributing to Animus News
 
-AnimusHQ accepts contributions that improve correctness, security posture, operability, documentation quality, test coverage, or release safety.
+Animus News is **proprietary software**. All rights are retained exclusively by
+Animus. See [`LICENSE`](LICENSE). The public visibility of this repository does
+not grant any license and does not make this an open-source project.
 
-Repositories may define project-specific contribution rules. If a repository has its own `CONTRIBUTING.md`, follow that file first.
+## Contribution policy
 
-## Before contributing
+External contributions are **not accepted by default**. Because the project is
+proprietary, code, documentation, and other materials in this repository may not
+be copied, modified, or redistributed without the prior express written
+permission of Animus.
 
-Before opening a pull request:
+If Animus expressly invites a contribution, it is accepted **only** under a prior
+written agreement assigning all rights, title, and interest in the contribution
+to Animus. Without such an agreement, please do not open pull requests.
 
-1. Read the repository README.
-2. Check project status and non-goals.
-3. Check open issues and existing pull requests.
-4. Avoid changing security-sensitive behavior without a design note or issue discussion.
-5. Do not include secrets, private keys, tokens, customer data, internal logs, or confidential material.
+This policy applies to this repository only. Separately published Animus
+open-source community projects are governed by their own contribution rules and
+license terms.
 
-## Accepted contribution areas
+## Reporting issues
 
-Useful contributions include:
+You may still report problems without contributing code:
 
-- tests and reproducible failure cases;
-- documentation corrections;
-- CI, linting, formatting, and release-safety improvements;
-- architecture notes and threat-model clarifications;
-- observability and diagnostics improvements;
-- bug fixes with clear reproduction steps;
-- examples that use safe test data and local-only configuration.
+- **Security vulnerabilities:** report privately per [`SECURITY.md`](SECURITY.md).
+  Do not open public issues for vulnerabilities.
+- **Bugs and documentation defects:** include the affected commit, environment,
+  expected vs. actual behavior, and minimal reproduction steps. Do not include
+  secrets, tokens, private keys, customer data, or internal logs.
 
-## Security-sensitive changes
+## Working agreements (for authorized contributors)
 
-Changes involving identity, sessions, authorization, relay behavior, cryptography, transport security, secret handling, audit logs, or service exposure require extra care.
+When a contribution is authorized in writing, follow the repository rules in
+[`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md):
 
-For these changes, include:
-
-- what behavior changes;
-- what threat or failure mode is affected;
-- how the change is tested;
-- what remains unsupported;
-- any migration or compatibility impact.
-
-Do not submit public proof-of-concept exploits for unresolved vulnerabilities. Report vulnerabilities through `SECURITY.md`.
-
-## Pull request checklist
-
-Before submitting:
-
-- [ ] The change has a clear scope.
-- [ ] Tests or validation steps are included.
-- [ ] Documentation is updated when behavior changes.
-- [ ] Security implications are stated when relevant.
-- [ ] No secrets, tokens, private data, or internal logs are included.
-- [ ] The change does not expand project claims beyond documented status.
-- [ ] New runtime behavior is observable or diagnosable where practical.
-
-## Review expectations
-
-Maintainers review for:
-
-- correctness;
-- maintainability;
-- security impact;
-- compatibility with repository scope;
-- operational clarity;
-- testability;
-- documentation quality.
-
-A pull request may be declined if it expands scope, weakens security boundaries, introduces unclear behavior, removes validation, or creates unsupported production claims.
+- keep changes scoped to an explicit task pack;
+- do not weaken gates, the publish-path invariant, or the safety model;
+- include tests or reproducible validation, and keep `make verify` green;
+- never add secrets, live provider calls, spend, or public publishing;
+- keep documented status honest (Implemented / Partial / Planned).

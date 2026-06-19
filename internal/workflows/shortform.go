@@ -149,7 +149,7 @@ func ShortFormWorkflow(ctx workflow.Context, in ShortFormInput) (ShortFormResult
 
 	// Visual shots.
 	var shots shortform.VisualShotManifest
-	if err := workflow.ExecuteActivity(ctx, a.GenerateMockVisualShots, activities.VisualShotsInput{EpisodeID: in.EpisodeID, Now: now, Storyboard: &storyboard}).Get(ctx, &shots); err != nil {
+	if err := workflow.ExecuteActivity(ctx, a.GenerateVisualShotsMock, activities.VisualShotsInput{EpisodeID: in.EpisodeID, Now: now, Storyboard: &storyboard}).Get(ctx, &shots); err != nil {
 		return blockErr(res, "visual_shots_failed", err)
 	}
 	if err := workflow.ExecuteActivity(ctx, a.ApproveVisualShots, &shots, now).Get(ctx, &shots); err != nil {
@@ -163,7 +163,7 @@ func ShortFormWorkflow(ctx workflow.Context, in ShortFormInput) (ShortFormResult
 
 	// Voiceover.
 	var voiceover shortform.VoiceoverManifest
-	if err := workflow.ExecuteActivity(ctx, a.GenerateElevenLabsVoiceover, activities.VoiceoverInput{EpisodeID: in.EpisodeID, Now: now, ScriptRef: in.ScriptRef, Language: in.Language}).Get(ctx, &voiceover); err != nil {
+	if err := workflow.ExecuteActivity(ctx, a.GenerateVoiceover, activities.VoiceoverInput{EpisodeID: in.EpisodeID, Now: now, ScriptRef: in.ScriptRef, Language: in.Language}).Get(ctx, &voiceover); err != nil {
 		return blockErr(res, "voiceover_failed", err)
 	}
 	if err := workflow.ExecuteActivity(ctx, a.ApproveVoiceover, &voiceover, now).Get(ctx, &voiceover); err != nil {
@@ -243,7 +243,7 @@ func ShortFormWorkflow(ctx workflow.Context, in ShortFormInput) (ShortFormResult
 
 	// Guarded publish manifest + dry-run + release gate.
 	var publish shortform.UploadPostPublishManifest
-	if err := workflow.ExecuteActivity(ctx, a.GenerateUploadPostPublishManifest, activities.PublishManifestInput{
+	if err := workflow.ExecuteActivity(ctx, a.GeneratePublishManifest, activities.PublishManifestInput{
 		EpisodeID: in.EpisodeID, Now: now, Release: &release, Render: &render,
 		ProductionQADecision: qa.Decision, ProductionQARef: "production_qa_report.json",
 	}).Get(ctx, &publish); err != nil {
@@ -252,14 +252,14 @@ func ShortFormWorkflow(ctx workflow.Context, in ShortFormInput) (ShortFormResult
 	stamp(&publish)
 
 	var dryRun activities.DryRunResult
-	if err := workflow.ExecuteActivity(ctx, a.UploadPostDryRun, &publish).Get(ctx, &dryRun); err != nil {
+	if err := workflow.ExecuteActivity(ctx, a.PublishDryRun, &publish).Get(ctx, &dryRun); err != nil {
 		return blockErr(res, "dry_run_failed", err)
 	}
 	if gate(gates.ReleaseGate(gates.ReleaseInput{PublishManifest: &publish, ProductionQADecision: qa.Decision, DryRunSucceeded: dryRun.OK})) {
 		return res, nil
 	}
 
-	record("published_dry_run_complete", "guarded upload-post dry-run complete (no upload performed)")
+	record("published_dry_run_complete", "guarded publishing dry-run complete (no upload performed)")
 	return res, nil
 }
 

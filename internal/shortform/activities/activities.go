@@ -148,14 +148,14 @@ type VisualShotsInput struct {
 	Storyboard *shortform.StoryboardImageManifest
 }
 
-// GenerateMockVisualShots is the M1 default (Seedance mock).
-func (a *Activities) GenerateMockVisualShots(ctx context.Context, in VisualShotsInput) (*shortform.VisualShotManifest, error) {
+// GenerateVisualShotsMock is the M1 default mock visual provider path.
+func (a *Activities) GenerateVisualShotsMock(ctx context.Context, in VisualShotsInput) (*shortform.VisualShotManifest, error) {
 	return a.Visual.GenerateShots(ctx, providers.VisualShotRequest{EpisodeID: in.EpisodeID, Now: in.Now, StoryboardImage: in.Storyboard})
 }
 
-// GenerateSeedanceShots is the real provider path; never runs in M1.
-func (a *Activities) GenerateSeedanceShots(_ context.Context, _ VisualShotsInput) (*shortform.VisualShotManifest, error) {
-	return nil, errNotEnabledInM1("GenerateSeedanceShots")
+// GenerateVisualShotsReal is the real visual provider path; never runs in M1.
+func (a *Activities) GenerateVisualShotsReal(_ context.Context, _ VisualShotsInput) (*shortform.VisualShotManifest, error) {
+	return nil, errNotEnabledInM1("GenerateVisualShotsReal")
 }
 
 func (a *Activities) ApproveVisualShots(_ context.Context, m *shortform.VisualShotManifest, now time.Time) (*shortform.VisualShotManifest, error) {
@@ -167,7 +167,7 @@ func (a *Activities) ApproveVisualShots(_ context.Context, m *shortform.VisualSh
 
 // ----- voiceover -----
 
-// VoiceoverInput synthesizes voiceover (ElevenLabs mock in M1).
+// VoiceoverInput synthesizes voiceover (mock voice provider in M1).
 type VoiceoverInput struct {
 	EpisodeID string
 	Now       time.Time
@@ -175,7 +175,7 @@ type VoiceoverInput struct {
 	Language  string
 }
 
-func (a *Activities) GenerateElevenLabsVoiceover(ctx context.Context, in VoiceoverInput) (*shortform.VoiceoverManifest, error) {
+func (a *Activities) GenerateVoiceover(ctx context.Context, in VoiceoverInput) (*shortform.VoiceoverManifest, error) {
 	return a.Voice.SynthesizeVoiceover(ctx, providers.VoiceoverRequest{EpisodeID: in.EpisodeID, Now: in.Now, ScriptRef: in.ScriptRef, Language: in.Language})
 }
 
@@ -303,7 +303,7 @@ func (a *Activities) BuildReleaseApproval(_ context.Context, in shortform.BuildR
 
 // ----- publishing -----
 
-// PublishManifestInput builds a guarded Upload-Post dry-run manifest.
+// PublishManifestInput builds a guarded publishing dry-run manifest.
 type PublishManifestInput struct {
 	EpisodeID            string
 	Now                  time.Time
@@ -313,14 +313,14 @@ type PublishManifestInput struct {
 	ProductionQARef      string
 }
 
-func (a *Activities) GenerateUploadPostPublishManifest(ctx context.Context, in PublishManifestInput) (*shortform.UploadPostPublishManifest, error) {
+func (a *Activities) GeneratePublishManifest(ctx context.Context, in PublishManifestInput) (*shortform.UploadPostPublishManifest, error) {
 	return a.Publishing.UploadPostDryRun(ctx, providers.PublishRequest{
 		EpisodeID: in.EpisodeID, Now: in.Now, Release: in.Release, Render: in.Render,
 		ProductionQADecision: in.ProductionQADecision, ProductionQARef: in.ProductionQARef,
 	})
 }
 
-func (a *Activities) ValidateUploadPostPublishManifest(_ context.Context, m *shortform.UploadPostPublishManifest) (ValidationResult, error) {
+func (a *Activities) ValidatePublishManifest(_ context.Context, m *shortform.UploadPostPublishManifest) (ValidationResult, error) {
 	if m == nil {
 		return ValidationResult{Valid: false, Issues: []string{"publish manifest is nil"}}, nil
 	}
@@ -334,9 +334,9 @@ type DryRunResult struct {
 	Detail string `json:"detail"`
 }
 
-// UploadPostDryRun simulates the guarded dry-run. It never performs a real
+// PublishDryRun simulates the guarded dry-run. It never performs a real
 // upload (M1) and requires dry_run mode.
-func (a *Activities) UploadPostDryRun(_ context.Context, m *shortform.UploadPostPublishManifest) (DryRunResult, error) {
+func (a *Activities) PublishDryRun(_ context.Context, m *shortform.UploadPostPublishManifest) (DryRunResult, error) {
 	if m == nil {
 		return DryRunResult{OK: false, Detail: "publish manifest is nil"}, nil
 	}
@@ -358,10 +358,10 @@ func (a *Activities) UploadPostDryRun(_ context.Context, m *shortform.UploadPost
 	return DryRunResult{OK: true, Mode: "dry_run", Detail: "dry-run validated; no upload performed"}, nil
 }
 
-// UploadPostSchedulePublish is the real scheduled/public publish path; never runs
+// PublishSchedule is the real scheduled/public publish path; never runs
 // in M2.
-func (a *Activities) UploadPostSchedulePublish(_ context.Context, _ *shortform.UploadPostPublishManifest) error {
-	return fmt.Errorf("UploadPostSchedulePublish is refused in M2; only dry-run publish manifests are allowed")
+func (a *Activities) PublishSchedule(_ context.Context, _ *shortform.UploadPostPublishManifest) error {
+	return fmt.Errorf("PublishSchedule is refused in M2; only dry-run publish manifests are allowed")
 }
 
 func errNotEnabledInM1(name string) error {
