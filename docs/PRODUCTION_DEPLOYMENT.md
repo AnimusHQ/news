@@ -1,125 +1,313 @@
-# Production Deployment — Provider Layer
+# Production Deployment and Platform Boundary
 
-How real provider execution is configured and run **outside** this coding
-session: runtime secrets, API keys, local services, and infrastructure. This is
-the operational boundary for the L2 provider layer.
+This guide describes the operational boundary for real provider execution and the target local production platform foundation.
 
-This guide does not perform any deployment. Nothing here runs in CI. No real
-secret, network call, paid API, local model, or live deployment is required by
-`make verify*` or the test suite.
+Nothing in this document makes live provider calls by itself. CI and `make verify*` remain safe-by-default: no real secrets, no paid API calls, no social upload, no public publishing.
 
-## Architecture (the production path)
+## 1. Current deployment layers
 
-```
-Animus core (Go, typed, provider-agnostic)
-  -> typed provider adapter  (native, e.g. Claude API review)
-     or sanctioned external-command boundary  (e.g. Seedance/Chatterbox wrapper)
-  -> real HTTP provider / local service
-  -> returned media or structured JSON
-  -> Animus validation, hashing, manifests, gates
-  -> release candidate
-```
+### Current implemented lane: MVP Docker runtime
 
-Explicitly **not** the architecture:
+`docker-compose.mvp.yml` is the current local operator path for live smoke/full runs.
 
-```
-Animus core -> fake MCP wrapper around every HTTP API -> uncontrolled tools
-            -> live calls in CI -> secrets in repo -> public publishing
+It provides:
+
+```text
+animus-news container
+chatterbox service
+FFmpeg / ffprobe
+Python wrappers
+Go runtime/tooling
+stable wrapper paths
+/workspace/episodes roots
 ```
 
-Providers are HTTP/API services, not MCP servers, so they are reached by native
-adapters or external-command wrappers — never wrapped in MCP to fit a pattern.
-MCP stays reserved for true MCP tools (DaVinci Resolve finishing, Claude Code
-operator tooling).
+It does not provide the full platform stack yet: no Postgres, MinIO, Keycloak, Animus API, Animus worker split, or platform UI.
 
-## Provider matrix
+Runbook: [`docs/runbooks/mvp_docker_runtime.md`](runbooks/mvp_docker_runtime.md).
 
-| Provider | Mode | Secrets / services (runtime) | Status |
-| --- | --- | --- | --- |
-| Claude API (review/QA) | Native Go adapter | `ANTHROPIC_API_KEY` | Implemented |
-| Chatterbox (voice) | External-command wrapper | local Chatterbox server (`CHATTERBOX_BASE_URL`) | External-command only |
-| Seedance 2 (visual) | External-command wrapper | `SEEDANCE_API_KEY` (in wrapper env) | External-command only |
-| faster-whisper (subtitles) | External-command sidecar | local model/binary | Partial (sidecar) |
-| FFmpeg (render) | Local binary | `ffmpeg`/`ffprobe` | Implemented |
-| OpenAI (image) | Native (planned) | `OPENAI_API_KEY` | Planned (L3) |
+### Target next lane: PLATFORM-001
 
-## Where secrets come from at runtime
+`PLATFORM-001` should introduce a Docker-bootstrapped local production platform:
 
-Secrets are supplied by the operator's environment at run time — never committed:
+```text
+postgres
+temporal
+temporal-ui
+minio
+minio-init
+keycloak
+keycloak-init
+animus-api
+animus-worker
+animus-cli
+chatterbox
+optional faster-whisper
+optional observability collector
+```
 
-- **Local / dev:** a gitignored `.env` (template: `.env.example`) or shell exports.
-- **Server / CI-adjacent:** a secrets manager (e.g. AWS Secrets Manager, GCP
-  Secret Manager, Vault, Kubernetes Secrets) injected as environment variables
-  into the process that runs `animus-news`.
-- Animus reads only environment variables. It never reads secrets from the repo
-  and never writes them to artifacts or logs (the Claude provider redacts its key
-  from all errors).
-
-Required runtime variables are listed in `.env.example`. Each provider fails
-closed when its variables are missing.
-
-## Per-provider deployment
-
-### Claude API (native)
+The target command should be:
 
 ```bash
-export ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
-export ANTHROPIC_API_KEY=...                 # from your secrets manager
-export ANIMUS_CLAUDE_MODEL=claude-opus-4-8   # optional
-export ANIMUS_CLAUDE_TIMEOUT=60s             # optional
-# then: --claude-review api
+docker compose -f docker-compose.platform.yml up -d
+make verify-platform-local
 ```
 
-### Chatterbox (local HTTP service, via wrapper)
+## 2. Provider execution architecture
 
-1. Deploy a Chatterbox server (GPU recommended); confirm `/health`.
-2. Point `ANIMUS_VOICE_COMMAND` at the wrapper and set `CHATTERBOX_BASE_URL`.
-   Set `ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1` only for an intentional local live run.
-3. See `docs/runbooks/chatterbox_voice_wrapper.md`.
+The provider boundary remains typed and provider-agnostic:
 
-### Seedance (cloud API, via wrapper)
+```text
+Animus core / workflow activity
+  -> model router or provider registry
+  -> native adapter or sanctioned external-command wrapper
+  -> real provider / local service
+  -> normalized output
+  -> schema validation
+  -> hashing / object storage
+  -> quality gate
+  -> next workflow state
+```
 
-1. Provision a Seedance API key in your secrets manager.
-2. Point `ANIMUS_VISUAL_COMMAND` at the wrapper; export `SEEDANCE_API_KEY` in the
-   wrapper environment only.
-   Set `ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1` only for an intentional live run.
-3. See `docs/runbooks/seedance_visual_wrapper.md`.
+Explicitly not the architecture:
 
-### faster-whisper (sidecar)
+```text
+Animus core
+  -> fake MCP wrapper around every HTTP API
+  -> uncontrolled tools
+  -> live calls in CI
+  -> secrets in repo
+  -> direct public publishing
+```
 
-Install the model/binary and expose the sidecar via
-`ANIMUS_FASTER_WHISPER_COMMAND`, or use `--subtitle-provider script-timing`.
+MCP stays reserved for true MCP tools such as DaVinci Resolve finishing or Claude Code operator tooling. HTTP/API providers use native adapters or external-command wrappers.
 
-### OpenAI (planned)
+## 3. Provider matrix
 
-Deferred to L3 (no storyboard stage yet; official API contract unverified here).
-When implemented it will read `OPENAI_API_KEY` and follow the Claude provider's
-fail-closed + redaction patterns.
+| Provider / service | Mode | Runtime config | Current status |
+| --- | --- | --- | --- |
+| Claude API | Native Go adapter | `ANTHROPIC_API_KEY`, `ANIMUS_CLAUDE_*` | Implemented for review/QA lane |
+| OpenAI / ChatGPT | Native adapter planned | `OPENAI_API_KEY`, model router config | Target for multi-agent routing |
+| Seedance 2 | External-command wrapper | `SEEDANCE_API_KEY`, `SEEDANCE_BASE_URL`, `SEEDANCE_MODEL` | Implemented boundary |
+| Chatterbox | Docker/local HTTP service + wrapper | `CHATTERBOX_*` optional config | Implemented in MVP Docker lane |
+| faster-whisper | External-command sidecar | sidecar command/model config | Partial / optional |
+| FFmpeg / ffprobe | Container/local binary | container-provided in Docker lane | Implemented |
+| Remotion | Future render/UI lane | Node/TS runtime later | Deferred |
+| DaVinci Resolve | True MCP finishing lane | operator workstation | Boundary documented, optional |
+| Upload-Post / social APIs | Publishing adapter | future provider secrets | Dry-run/release-candidate only |
 
-## Failure behavior (fail-closed)
+## 4. Environment and secrets
 
-- Missing provider config → the pilot stops with a clear error naming the missing
-  variable. `generate-real` never silently falls back to mocks.
-- Missing `ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1` → native Claude API and live
-  wrapper calls fail closed before network or paid provider execution.
-- Native adapters: missing key → fail closed; 4xx / validation failures → no
-  retry; 429 / 5xx / transport → bounded retry; keys redacted from errors.
-- External-command wrappers: must exit non-zero on provider error; Animus
-  enforces a timeout, output hashing, root containment, and schema validation,
-  and rejects on mismatch / missing output / path escape.
+Environment files are configuration boundaries, not content storage.
 
-## No-live-CI policy
+Allowed in `.env.mvp.local` or future `.env.platform.local`:
 
-- `make verify`, `make verify-real-pilot`, `make verify-m2-local`,
-  `make verify-m3`, and `make verify-l2-providers` use mocks, fake HTTP servers,
-  and fake external-command providers only.
-- CI must not require real secrets, real network calls, paid APIs, local models,
-  or live deployment.
-- This coding session performs no live provider calls, no spend, no
-  infrastructure deployment, and handles no real credentials.
+```text
+provider keys
+provider endpoints
+provider model ids
+timeouts
+live-call gate
+local dev infrastructure credentials
+non-secret run id
+```
 
-## Publishing
+Forbidden:
 
-Publishing remains dry-run / `release_candidate_only` with `visibility=private`
-and `live_publishing_enabled=false`. Public publishing is a separate, later
-milestone and is intentionally absent here.
+```text
+PROMPT
+TOPIC
+EPISODE_ID
+VIDEO_STYLE
+CTA
+LANGUAGE
+DURATION
+PLATFORMS
+any runtime creative content
+```
+
+Runtime content enters via CLI/API request fields only.
+
+Do not print secrets:
+
+```text
+cat .env
+printenv
+env
+set
+```
+
+Provider adapters and wrappers must redact keys, auth headers, and signed URLs from errors and reports.
+
+## 5. MinIO / S3-compatible object storage target
+
+PLATFORM-001 should make MinIO the local S3-compatible object store for media and large artifacts.
+
+Object storage holds:
+
+```text
+raw/redacted provider responses
+research packs
+scripts and manifests
+voiceover WAV
+visual shots MP4
+subtitle files
+OTIO timelines
+render outputs
+release candidates
+QA reports
+```
+
+Postgres stores object references, lineage, hashes, schema versions, status, and access metadata.
+
+Initial bucket layout:
+
+```text
+animus-artifacts
+animus-media
+animus-release-candidates
+```
+
+The application should never assume local filesystem paths are the production source of truth once PLATFORM-001 lands. Local `episodes/` remains a developer/operator convenience and Docker volume.
+
+## 6. Keycloak authorization target
+
+PLATFORM-001 should add Keycloak as the local identity provider and authorization layer.
+
+Initial roles:
+
+```text
+admin
+operator
+creative_director
+reviewer
+publisher
+viewer
+service_worker
+service_provider
+```
+
+Initial clients:
+
+```text
+animus-api
+animus-console
+animus-cli
+animus-worker
+```
+
+Hard rules:
+
+- API validates JWTs for protected routes.
+- Human QA and release approval require authenticated human roles.
+- Workers use service accounts.
+- Frontend never receives provider credentials.
+- Publishing cannot bypass authenticated release gates.
+
+## 7. OTIO timeline target
+
+OpenTimelineIO becomes the canonical timeline interchange layer for edit structure.
+
+Generated/rendered episodes should eventually store:
+
+```text
+timeline.otio
+timeline_manifest.json
+edit_decision_list.json
+shot_graph.yaml
+scene_graph.yaml
+render_plan.json
+```
+
+OTIO references media in MinIO and allows the same episode primitives to scale from short-form clips to scenes, sequences, trailers, cinematic reels, and full productions.
+
+## 8. Live-call gate
+
+Real provider calls require:
+
+```bash
+ANIMUS_ALLOW_LIVE_PROVIDER_CALLS=1
+```
+
+Missing gate means fail-closed before provider spend or network media calls.
+
+No live provider execution is part of CI.
+
+## 9. Failure behavior
+
+All real execution failures must be explicit and classified.
+
+Initial failure classes:
+
+```text
+runtime_config_missing
+claude_api_failure
+openai_api_failure
+model_router_failure
+seedance_auth_failure
+seedance_generation_failure
+seedance_download_failure
+chatterbox_health_failure
+chatterbox_voice_failure
+subtitle_failure
+ffmpeg_render_failure
+otio_timeline_failure
+storage_failure
+auth_failure
+validation_failure
+quality_gate_failure
+release_gate_blocked
+unknown
+```
+
+No command may report success when the requested target artifact does not exist and validate.
+
+## 10. Publishing posture
+
+Publishing remains dry-run / release-candidate only:
+
+```text
+release_candidate_only: true
+live_publishing_enabled: false
+public_publish_enabled: false
+human_release_required: true
+```
+
+Public publishing is a separate milestone after private release, QA, authorization, and incident/correction runbooks are ready.
+
+## 11. Verification policy
+
+CI-safe targets must require no real provider keys, no paid APIs, no local GPU, and no social credentials.
+
+Current targets:
+
+```bash
+make verify
+make verify-real-pilot
+make verify-m2-local
+make verify-m3
+make verify-l2-providers
+make verify-mvp-docker
+go vet ./...
+go test ./...
+```
+
+Target PLATFORM-001 verification:
+
+```bash
+make verify-platform-static
+make verify-platform-compose
+make verify-auth-config
+make verify-storage-config
+make verify-agent-registry
+make verify-otio
+make verify-platform-local
+```
+
+Live smoke/full runs should remain explicit operator actions.
+
+## 12. External references
+
+- MinIO container documentation: https://min.io/docs/minio/container/index.html
+- Keycloak documentation: https://www.keycloak.org/documentation
+- OpenTimelineIO documentation: https://opentimelineio.readthedocs.io/
