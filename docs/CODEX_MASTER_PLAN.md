@@ -1,5 +1,12 @@
 # Codex Master Implementation Plan
 
+> **Status: target design, not current implementation.** This document describes
+> the intended target system and implementation backlog. For authoritative,
+> code-backed status see [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md).
+> **Implemented today:** the short-form (M1–L2) typed-contract / gate /
+> `ShortFormWorkflow` slice running end-to-end on mock and fail-closed
+> (disabled-by-default) providers — no live calls, no spend, no public publishing.
+
 ## 1. Purpose
 
 This document is the implementation backlog for building Animus News into a production-grade, source-grounded, multimodel content compiler.

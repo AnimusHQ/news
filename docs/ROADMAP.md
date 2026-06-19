@@ -1,5 +1,12 @@
 # Roadmap
 
+> **Status: target design, not current implementation.** This document describes
+> the intended target system. For authoritative, code-backed status see
+> [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md). **Implemented today:** the
+> short-form (M1–L2) typed-contract / gate / `ShortFormWorkflow` slice running
+> end-to-end on mock and fail-closed (disabled-by-default) providers — no live
+> calls, no spend, no public publishing.
+
 ## 1. Roadmap philosophy
 
 Animus News should be built in phases. The correct order is not “connect every AI tool first.” The correct order is:
