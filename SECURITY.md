@@ -1,5 +1,10 @@
 # Security policy
 
+> **Licensing note:** Animus News (this repository) is proprietary software; all
+> rights are retained by Animus (see [`LICENSE`](LICENSE)). Nothing in this
+> security policy grants any license to use, copy, or modify the software. The
+> vulnerability-reporting process below still applies.
+
 AnimusHQ projects may include components related to secure access, service exposure, identity, sessions, relays, transport, control planes, and management planes.
 
 Do not treat any AnimusHQ project as production-certified security software unless that repository explicitly documents a supported release, deployment model, threat model, and security review status.

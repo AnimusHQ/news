@@ -1,6 +1,11 @@
 # Support
 
-AnimusHQ repositories are open-source projects with best-effort maintenance unless a repository states a different support model.
+> **Licensing note:** Animus News (this repository) is proprietary software; all
+> rights are retained by Animus (see [`LICENSE`](LICENSE)). It is not an
+> open-source project, and the public visibility of this repository grants no
+> license. Best-effort maintenance is provided at Animus's discretion.
+
+AnimusHQ provides best-effort maintenance for this repository unless it states a different support model.
 
 ## Questions and discussions
 
